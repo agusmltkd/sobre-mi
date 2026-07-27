@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" fill="#E8E2D2"/>
+
+  <!-- Anillos de distancia -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#B4AE9C" stroke-width="4"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#B4AE9C" stroke-width="3" stroke-dasharray="8 10"/>
+  <circle cx="256" cy="256" r="60"  fill="none" stroke="#B4AE9C" stroke-width="3" stroke-dasharray="8 10"/>
+
+  <!-- Estela -->
+  <path d="M96 372 C 180 300, 250 240, 372 150"
+        fill="none" stroke="#1C1B18" stroke-width="5"
+        stroke-opacity="0.3" stroke-linecap="round"/>
+
+  <!-- Marca de casa -->
+  <circle cx="256" cy="256" r="11" fill="none" stroke="#8C3A1E" stroke-width="6"/>
+  <line x1="234" y1="256" x2="278" y2="256" stroke="#8C3A1E" stroke-width="4"/>
+  <line x1="256" y1="234" x2="256" y2="278" stroke="#8C3A1E" stroke-width="4"/>
+
+  <!-- Aeronave -->
+  <g transform="translate(372 150) rotate(48)">
+    <path d="M0 -38 L26 32 L0 16 L-26 32 Z" fill="#1C1B18"/>
+  </g>
+</svg>

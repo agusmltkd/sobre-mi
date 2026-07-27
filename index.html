@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sobre mí</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#E8E2D2">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Sobre mí">
+<link rel="apple-touch-icon" href="icono.png">
+
+<style>
+:root{
+  --papel:#E8E2D2;
+  --papel-hondo:#DED6C3;
+  --tinta:#1C1B18;
+  --tinta-media:#4A4741;
+  --tenue:#6B675C;
+  --regla:#B4AE9C;
+  --sello:#8C3A1E;
+  --plomo:#2E4756;
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Roboto Mono", monospace;
+  --display: "Avenir Next Condensed", "Helvetica Neue Condensed", "Arial Narrow", var(--mono);
+}
+
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+body{
+  background:var(--papel);
+  color:var(--tinta);
+  font-family:var(--mono);
+  font-size:14px;
+  line-height:1.35;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Grano de papel: dos degradados muy tenues, nada de imágenes. */
+  background-image:
+    radial-gradient(circle at 20% 15%, rgba(0,0,0,.025) 0 30%, transparent 60%),
+    radial-gradient(circle at 85% 80%, rgba(0,0,0,.02) 0 25%, transparent 55%);
+  background-attachment:fixed;
+}
+
+.envoltura{max-width:640px;margin:0 auto;padding:0 16px 40px}
+
+/* ---------- Cabecera ---------- */
+
+header{
+  position:sticky;top:0;z-index:10;
+  background:var(--papel);
+  padding:14px 0 10px;
+  border-bottom:1px solid var(--regla);
+  margin-bottom:14px;
+}
+.titulo-fila{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{
+  font-family:var(--display);
+  font-size:26px;font-weight:600;
+  letter-spacing:.06em;text-transform:uppercase;
+  line-height:1;
+}
+.sitio{font-size:10px;color:var(--tenue);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+
+.estado{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--tenue);letter-spacing:.1em}
+.punto{width:7px;height:7px;border-radius:50%;background:var(--sello);flex:none}
+.punto.vivo{animation:latido 2s ease-in-out infinite}
+@keyframes latido{0%,100%{opacity:1}50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.punto.vivo{animation:none}}
+
+/* ---------- Osciloscopio ---------- */
+
+.cuadro{
+  position:relative;
+  background:var(--papel-hondo);
+  border:1px solid var(--regla);
+  padding:10px;
+  margin-bottom:18px;
+}
+.cuadro svg{display:block;width:100%;height:auto}
+.etiqueta-cuadro{
+  position:absolute;top:8px;left:12px;
+  font-size:9px;letter-spacing:.16em;color:var(--tenue);text-transform:uppercase;
+}
+.cuenta-cuadro{
+  position:absolute;top:8px;right:12px;
+  font-size:9px;letter-spacing:.16em;color:var(--tenue);text-transform:uppercase;
+}
+
+/* ---------- Tiras de vuelo ---------- */
+
+.tiras{display:flex;flex-direction:column;gap:8px}
+
+.tira{
+  display:grid;
+  grid-template-columns:6px 1fr auto;
+  background:var(--papel-hondo);
+  border:1px solid var(--regla);
+  cursor:pointer;
+  transition:background .12s ease;
+}
+.tira:hover,.tira:focus-visible{background:#D6CDB8}
+.tira:focus-visible{outline:2px solid var(--sello);outline-offset:2px}
+.tira.marcada{background:#D6CDB8;border-color:var(--tinta)}
+
+.canto{background:var(--tinta)}
+.tira.baja .canto{background:var(--sello)}
+
+.cuerpo{padding:9px 11px;min-width:0}
+.ruta{
+  font-family:var(--display);
+  font-size:19px;font-weight:600;letter-spacing:.04em;
+  color:var(--sello);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.ruta .lugar{font-size:11px;color:var(--tenue);letter-spacing:.06em;margin-left:6px}
+.maquina{font-size:11px;color:var(--tinta-media);margin-top:3px;
+         white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.telemetria{font-size:10px;color:var(--tenue);margin-top:4px;letter-spacing:.03em}
+
+.medida{
+  padding:9px 11px 9px 0;text-align:right;display:flex;
+  flex-direction:column;justify-content:center;flex:none;
+}
+.km{font-size:20px;font-weight:600;line-height:1}
+.rumbo{font-size:9px;color:var(--tenue);letter-spacing:.12em;margin-top:3px}
+
+/* ---------- Pie ---------- */
+
+.pie{
+  margin-top:20px;padding-top:12px;border-top:1px solid var(--regla);
+  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;
+  font-size:10px;color:var(--tenue);letter-spacing:.1em;text-transform:uppercase;
+}
+.pie button,.pie select{
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  background:transparent;color:var(--tenue);
+  border:1px solid var(--regla);padding:5px 9px;cursor:pointer;
+}
+.pie button[aria-pressed="true"]{border-color:var(--tinta);color:var(--tinta)}
+.pie button:focus-visible,.pie select:focus-visible{outline:2px solid var(--sello);outline-offset:2px}
+
+.aviso{
+  font-size:11px;color:var(--sello);
+  border-left:2px solid var(--sello);padding:8px 11px;
+  margin-bottom:14px;letter-spacing:.02em;text-transform:none;
+}
+.vacio{padding:26px 0;text-align:center;color:var(--tenue);font-size:12px}
+</style>
+</head>
+
+<body>
+<div class="envoltura">
+
+  <header>
+    <div class="titulo-fila">
+      <div>
+        <h1>Sobre mí</h1>
+        <div class="sitio" id="sitio">—</div>
+      </div>
+      <div class="estado">
+        <span class="punto" id="punto"></span>
+        <span id="estado">iniciando</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="aviso"></div>
+
+  <div class="cuadro">
+    <span class="etiqueta-cuadro">Vertical</span>
+    <span class="cuenta-cuadro" id="cuenta">—</span>
+    <svg id="scope" viewBox="0 0 400 400" role="img" aria-label="Tráfico aéreo alrededor de tu posición"></svg>
+  </div>
+
+  <div class="tiras" id="tiras"></div>
+
+  <div class="pie">
+    <span id="vistos">0 vistos en la sesión</span>
+    <label>
+      Radio
+      <select id="radio">
+        <option value="10">10 km</option>
+        <option value="25" selected>25 km</option>
+        <option value="50">50 km</option>
+      </select>
+    </label>
+    <button id="btnLuz" aria-pressed="false">Pantalla encendida</button>
+    <button id="btnEstelas" aria-pressed="true">Estelas</button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+//  SOBRE MÍ · app
+//  Posiciones: OpenSky Network
+//  Identidad y rutas: adsbdb.com
+// ============================================================
+
+const CONFIG = {
+  lat: 37.402935,
+  lon: -5.957803,
+  nombre: "Sevilla · 37.4029 N, 5.9578 O",
+  radioKm: 25,
+  refrescoMs: 15000,
+  clientId: "agusmorla-api-client",
+  clientSecret: "TnzprX1v6UDGqjnt8fmmqe5i9gYCRmJ3",
+  maxTiras: 12,
+  maxFichasPorCiclo: 6,
+  puntosEstela: 25
+};
+
+const URL_TOKEN = "https://auth.opensky-network.org/auth/realms/" +
+                  "opensky-network/protocol/openid-connect/token";
+
+// --- Estado en memoria -------------------------------------
+
+let token = null;            // {valor, expira}
+let modoAnonimo = false;
+let estelas = new Map();     // icao24 -> [{x,y}]
+let fichas = new Map();      // icao24 -> ficha | null
+let rutas = new Map();       // callsign -> ruta | null
+let vistos = new Map();      // icao24 -> etiqueta
+let marcado = null;          // icao24 seleccionado
+let mostrarEstelas = true;
+let wakeLock = null;
+
+// --- Utilidades --------------------------------------------
+
+const $ = id => document.getElementById(id);
+const RUMBOS = ["N","NE","E","SE","S","SO","O","NO"];
+const octante = az => Math.round(az / 45) % 8;
+
+// Proyección local plana. A 50 km el error es despreciable y nos
+// ahorra trigonometría esférica en cada refresco.
+function proyectar(lat, lon) {
+  const x = (lon - CONFIG.lon) * 111.32 * Math.cos(CONFIG.lat * Math.PI / 180);
+  const y = (lat - CONFIG.lat) * 111.32;
+  return { x, y };
+}
+
+const distancia = p => Math.hypot(p.x, p.y);
+const acimut = p => (Math.atan2(p.x, p.y) * 180 / Math.PI + 360) % 360;
+
+function formatoAltitud(pies) {
+  if (pies >= 10000) return "FL" + String(Math.round(pies / 100)).padStart(3, "0");
+  return Math.round(pies / 100) * 100 + " ft";
+}
+
+function aviso(texto) {
+  $("aviso").innerHTML = texto ? `<div class="aviso">${texto}</div>` : "";
+}
+
+// --- OpenSky -----------------------------------------------
+
+async function obtenerToken() {
+  if (modoAnonimo || !CONFIG.clientId) return null;
+  if (token && token.expira > Date.now() + 60000) return token.valor;
+
+  try {
+    const res = await fetch(URL_TOKEN, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "client_credentials",
+        client_id: CONFIG.clientId,
+        client_secret: CONFIG.clientSecret
+      })
+    });
+    if (!res.ok) throw new Error("token " + res.status);
+    const j = await res.json();
+    token = { valor: j.access_token, expira: Date.now() + (j.expires_in - 30) * 1000 };
+    return token.valor;
+  } catch (e) {
+    // El servidor de auth puede rechazar la petición desde el
+    // navegador por CORS. No es un fallo fatal: seguimos en
+    // anónimo, que funciona con un límite más bajo.
+    modoAnonimo = true;
+    aviso("Sin autenticar: el navegador no puede pedir el token directamente. " +
+          "Funciona en modo anónimo con menos peticiones por hora. " +
+          "Se arregla poniendo el Worker por delante.");
+    return null;
+  }
+}
+
+async function pedirEstados() {
+  const dLat = CONFIG.radioKm / 111.32;
+  const dLon = CONFIG.radioKm / (111.32 * Math.cos(CONFIG.lat * Math.PI / 180));
+
+  const url = "https://opensky-network.org/api/states/all" +
+    `?lamin=${CONFIG.lat - dLat}&lomin=${CONFIG.lon - dLon}` +
+    `&lamax=${CONFIG.lat + dLat}&lomax=${CONFIG.lon + dLon}`;
+
+  const t = await obtenerToken();
+  const res = await fetch(url, t ? { headers: { Authorization: "Bearer " + t } } : {});
+  if (!res.ok) throw new Error("OpenSky " + res.status);
+  const j = await res.json();
+  return j.states || [];
+}
+
+// --- adsbdb ------------------------------------------------
+
+async function pedirFicha(icao24) {
+  if (fichas.has(icao24)) return fichas.get(icao24);
+  try {
+    const r = await fetch(`https://api.adsbdb.com/v0/aircraft/${icao24}`);
+    const j = await r.json();
+    const a = j.response && j.response.aircraft;
+    const f = a ? {
+      tipo: a.type || "",
+      icaoTipo: a.icao_type || "",
+      matricula: a.registration || "",
+      operador: a.registered_owner || ""
+    } : null;
+    fichas.set(icao24, f);
+    return f;
+  } catch (e) { return null; }
+}
+
+async function pedirRuta(callsign) {
+  if (!callsign) return null;
+  if (rutas.has(callsign)) return rutas.get(callsign);
+  try {
+    const r = await fetch(`https://api.adsbdb.com/v0/callsign/${callsign}`);
+    const j = await r.json();
+    const f = j.response && j.response.flightroute;
+    const v = f ? {
+      origen: (f.origin && (f.origin.iata_code || f.origin.icao_code)) || "",
+      destino: (f.destination && (f.destination.iata_code || f.destination.icao_code)) || "",
+      origenNombre: (f.origin && f.origin.municipality) || "",
+      destinoNombre: (f.destination && f.destination.municipality) || ""
+    } : null;
+    rutas.set(callsign, v);
+    return v;
+  } catch (e) { return null; }
+}
+
+// --- Procesado ---------------------------------------------
+
+const IDX = { icao24:0, callsign:1, lon:5, lat:6, altBaro:7, enSuelo:8,
+              velocidad:9, rumbo:10, velVertical:11, altGeo:13 };
+
+function procesar(estados) {
+  const aviones = [];
+  for (const s of estados) {
+    if (s[IDX.lat] == null || s[IDX.lon] == null || s[IDX.enSuelo]) continue;
+
+    const p = proyectar(s[IDX.lat], s[IDX.lon]);
+    const d = distancia(p);
+    if (d > CONFIG.radioKm) continue;
+
+    const alt = s[IDX.altGeo] ?? s[IDX.altBaro] ?? 0;
+    const icao24 = s[IDX.icao24];
+
+    aviones.push({
+      icao24,
+      callsign: (s[IDX.callsign] || "").trim(),
+      x: p.x, y: p.y,
+      distanciaKm: d,
+      acimut: acimut(p),
+      pies: alt * 3.28084,
+      rumbo: s[IDX.rumbo] || 0,
+      vv: s[IDX.velVertical] || 0,
+      nudos: (s[IDX.velocidad] || 0) * 1.94384,
+      ficha: fichas.get(icao24) || null,
+      ruta: rutas.get((s[IDX.callsign] || "").trim()) || null
+    });
+
+    // Estela: el registro impreso de por dónde ha pasado.
+    if (!estelas.has(icao24)) estelas.set(icao24, []);
+    const e = estelas.get(icao24);
+    const ult = e[e.length - 1];
+    if (!ult || Math.hypot(ult.x - p.x, ult.y - p.y) > 0.15) {
+      e.push({ x: p.x, y: p.y });
+      if (e.length > CONFIG.puntosEstela) e.shift();
+    }
+  }
+  return aviones.sort((a, b) => a.distanciaKm - b.distanciaKm);
+}
+
+async function enriquecer(aviones) {
+  let presupuesto = CONFIG.maxFichasPorCiclo;
+  for (const a of aviones.slice(0, CONFIG.maxTiras)) {
+    if (presupuesto <= 0) break;
+    let gastado = false;
+    if (!fichas.has(a.icao24)) { a.ficha = await pedirFicha(a.icao24); gastado = true; }
+    else a.ficha = fichas.get(a.icao24);
+    if (a.callsign && !rutas.has(a.callsign)) { a.ruta = await pedirRuta(a.callsign); gastado = true; }
+    else a.ruta = rutas.get(a.callsign) || null;
+    if (gastado) presupuesto--;
+  }
+}
+
+// --- Dibujo del scope --------------------------------------
+
+const NS = "http://www.w3.org/2000/svg";
+const crear = (t, attrs) => {
+  const el = document.createElementNS(NS, t);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+};
+
+// Densidad de tinta según altitud: lo bajo y cercano se imprime
+// oscuro, lo alto queda desvaído. Sin arcoíris.
+function tintaPorAltitud(pies) {
+  if (pies < 5000) return "#1C1B18";
+  if (pies < 20000) return "#4A4741";
+  return "#857F72";
+}
+
+function dibujarScope(aviones) {
+  const svg = $("scope");
+  svg.innerHTML = "";
+  const cx = 200, cy = 200, R = 172;
+  const escala = R / CONFIG.radioKm;
+
+  // Anillos de distancia, grabados a línea fina.
+  const paso = CONFIG.radioKm / 5;
+  for (let i = 1; i <= 5; i++) {
+    svg.appendChild(crear("circle", {
+      cx, cy, r: (paso * i) * escala,
+      fill: "none", stroke: "#B4AE9C",
+      "stroke-width": i === 5 ? 1 : .5,
+      "stroke-dasharray": i === 5 ? "none" : "2 3"
+    }));
+  }
+  for (let i = 1; i <= 5; i += 2) {
+    const t = crear("text", {
+      x: cx + 3, y: cy - (paso * i) * escala - 3,
+      fill: "#8A8579", "font-size": 8, "font-family": "monospace"
+    });
+    t.textContent = Math.round(paso * i) + " km";
+    svg.appendChild(t);
+  }
+
+  // Cruz de rumbos.
+  ["N","E","S","O"].forEach((r, i) => {
+    const a = i * 90 * Math.PI / 180;
+    svg.appendChild(crear("line", {
+      x1: cx + Math.sin(a) * (R - 14), y1: cy - Math.cos(a) * (R - 14),
+      x2: cx + Math.sin(a) * R,        y2: cy - Math.cos(a) * R,
+      stroke: "#8A8579", "stroke-width": 1
+    }));
+    const t = crear("text", {
+      x: cx + Math.sin(a) * (R + 11), y: cy - Math.cos(a) * (R + 11) + 3,
+      fill: "#6B675C", "font-size": 10, "font-family": "monospace",
+      "text-anchor": "middle"
+    });
+    t.textContent = r;
+    svg.appendChild(t);
+  });
+
+  // Estelas acumuladas: el dibujo del tráfico sobre el papel.
+  if (mostrarEstelas) {
+    const activos = new Set(aviones.map(a => a.icao24));
+    for (const [icao, pts] of estelas) {
+      if (pts.length < 2) continue;
+      const d = pts.map((p, i) =>
+        (i ? "L" : "M") + (cx + p.x * escala).toFixed(1) + " " +
+        (cy - p.y * escala).toFixed(1)).join(" ");
+      svg.appendChild(crear("path", {
+        d, fill: "none", stroke: "#1C1B18",
+        "stroke-width": activos.has(icao) ? .8 : .5,
+        "stroke-opacity": activos.has(icao) ? .28 : .12,
+        "stroke-linecap": "round", "stroke-linejoin": "round"
+      }));
+    }
+  }
+
+  // Marca de casa.
+  svg.appendChild(crear("circle", { cx, cy, r: 3.5, fill: "none",
+                                    stroke: "#8C3A1E", "stroke-width": 1.2 }));
+  svg.appendChild(crear("line", { x1: cx - 7, y1: cy, x2: cx + 7, y2: cy,
+                                  stroke: "#8C3A1E", "stroke-width": .8 }));
+  svg.appendChild(crear("line", { x1: cx, y1: cy - 7, x2: cx, y2: cy + 7,
+                                  stroke: "#8C3A1E", "stroke-width": .8 }));
+
+  // Aeronaves.
+  aviones.forEach((a, i) => {
+    const px = cx + a.x * escala;
+    const py = cy - a.y * escala;
+    const esMarcado = a.icao24 === marcado;
+    const color = esMarcado ? "#8C3A1E" : tintaPorAltitud(a.pies);
+
+    const g = crear("g", { transform: `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${a.rumbo})` });
+    g.appendChild(crear("path", {
+      d: "M0 -6 L4 5 L0 2.5 L-4 5 Z",
+      fill: color, stroke: "none"
+    }));
+    svg.appendChild(g);
+
+    // Solo etiquetamos los tres más cercanos: más que eso y el
+    // scope se convierte en una mancha ilegible.
+    if (i < 3 || esMarcado) {
+      const et = crear("text", {
+        x: px + 8, y: py + 3,
+        fill: color, "font-size": 8.5, "font-family": "monospace",
+        "font-weight": esMarcado ? "700" : "400"
+      });
+      et.textContent = a.callsign || a.icao24.toUpperCase();
+      svg.appendChild(et);
+    }
+  });
+}
+
+// --- Tiras -------------------------------------------------
+
+function textoRuta(a) {
+  if (a.ruta && a.ruta.origen && a.ruta.destino) {
+    const lugares = [a.ruta.origenNombre, a.ruta.destinoNombre].filter(Boolean);
+    const sub = lugares.length === 2 ? `<span class="lugar">${lugares[0]} · ${lugares[1]}</span>` : "";
+    return `${a.ruta.origen} → ${a.ruta.destino}${sub}`;
+  }
+  if (a.ficha && a.ficha.operador) return a.ficha.operador;
+  return a.callsign || a.icao24.toUpperCase();
+}
+
+function textoMaquina(a) {
+  if (!a.ficha) return "identificando…";
+  return [a.ficha.tipo || a.ficha.icaoTipo, a.ficha.matricula, a.ficha.operador]
+    .filter(Boolean).join(" · ") || "sin ficha";
+}
+
+function dibujarTiras(aviones) {
+  const cont = $("tiras");
+  cont.innerHTML = "";
+
+  if (!aviones.length) {
+    cont.innerHTML = `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo</div>`;
+    return;
+  }
+
+  aviones.slice(0, CONFIG.maxTiras).forEach(a => {
+    const tira = document.createElement("div");
+    tira.className = "tira" + (a.pies < 5000 ? " baja" : "") +
+                     (a.icao24 === marcado ? " marcada" : "");
+    tira.tabIndex = 0;
+    tira.setAttribute("role", "button");
+
+    const tend = a.vv > 1.5 ? "↑" : a.vv < -1.5 ? "↓" : "→";
+
+    tira.innerHTML = `
+      <div class="canto"></div>
+      <div class="cuerpo">
+        <div class="ruta">${textoRuta(a)}</div>
+        <div class="maquina">${textoMaquina(a)}</div>
+        <div class="telemetria">
+          ${a.callsign || "—"} &nbsp;·&nbsp; ${formatoAltitud(a.pies)} ${tend}
+          &nbsp;·&nbsp; ${Math.round(a.nudos)} kt
+        </div>
+      </div>
+      <div class="medida">
+        <div class="km">${a.distanciaKm.toFixed(1)}</div>
+        <div class="rumbo">km ${RUMBOS[octante(a.acimut)]}</div>
+      </div>`;
+
+    const alternar = () => {
+      marcado = marcado === a.icao24 ? null : a.icao24;
+      refrescarVista();
+    };
+    tira.addEventListener("click", alternar);
+    tira.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); alternar(); }
+    });
+
+    cont.appendChild(tira);
+  });
+}
+
+// --- Ciclo -------------------------------------------------
+
+let ultimos = [];
+
+function refrescarVista() {
+  dibujarScope(ultimos);
+  dibujarTiras(ultimos);
+}
+
+async function ciclo() {
+  try {
+    $("estado").textContent = "consultando";
+    const aviones = procesar(await pedirEstados());
+    await enriquecer(aviones);
+
+    aviones.forEach(a => vistos.set(a.icao24, a.callsign || a.icao24));
+    ultimos = aviones;
+
+    $("cuenta").textContent = aviones.length + " en el aire";
+    $("vistos").textContent = vistos.size + " vistos en la sesión";
+    $("punto").classList.add("vivo");
+    $("estado").textContent = new Date().toLocaleTimeString("es-ES",
+      { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+    refrescarVista();
+  } catch (e) {
+    console.error(e);
+    $("punto").classList.remove("vivo");
+    $("estado").textContent = "sin conexión";
+    aviso("No se ha podido consultar OpenSky. Reintentando en " +
+          (CONFIG.refrescoMs / 1000) + " s.");
+  }
+}
+
+// --- Controles ---------------------------------------------
+
+$("radio").addEventListener("change", e => {
+  CONFIG.radioKm = Number(e.target.value);
+  estelas.clear();
+  ciclo();
+});
+
+$("btnEstelas").addEventListener("click", e => {
+  mostrarEstelas = !mostrarEstelas;
+  e.target.setAttribute("aria-pressed", String(mostrarEstelas));
+  refrescarVista();
+});
+
+// Pantalla siempre encendida: convierte el móvil o un iPad viejo
+// en un panel de sobremesa.
+$("btnLuz").addEventListener("click", async e => {
+  try {
+    if (wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+      e.target.setAttribute("aria-pressed", "false");
+    } else {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null;
+        e.target.setAttribute("aria-pressed", "false");
+      });
+      e.target.setAttribute("aria-pressed", "true");
+    }
+  } catch (err) {
+    e.target.textContent = "No disponible aquí";
+    e.target.disabled = true;
+  }
+});
+
+// Al volver a la app, refrescar inmediatamente en vez de esperar.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") ciclo();
+});
+
+// --- Arranque ----------------------------------------------
+
+$("sitio").textContent = CONFIG.nombre;
+ciclo();
+setInterval(ciclo, CONFIG.refrescoMs);
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "Sobre mí",
+  "short_name": "Sobre mí",
+  "description": "Qué está pasando en el aire por encima de tu casa, ahora mismo.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E8E2D2",
+  "theme_color": "#E8E2D2",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icono.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
