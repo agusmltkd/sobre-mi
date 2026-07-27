@@ -204,9 +204,20 @@ const CONFIG = {
   lon: -5.957803,
   nombre: "Sevilla · 37.4029 N, 5.9578 O",
   radioKm: 25,
+
+  // URL del Worker, sin barra final. Con esto puesto, el navegador
+  // deja de hablar con OpenSky directamente y desaparecen tanto el
+  // problema de CORS como la necesidad de credenciales aquí.
+  //   ej: "https://sobre-mi.TUCUENTA.workers.dev"
+  proxy: "",
+
+  // Con Worker aguanta 15 s de sobra. Sin él, súbelo a 60000.
   refrescoMs: 15000,
+
+  // Solo se usan en modo directo (sin proxy).
   clientId: "agusmorla-api-client",
   clientSecret: "TnzprX1v6UDGqjnt8fmmqe5i9gYCRmJ3",
+
   maxTiras: 12,
   maxFichasPorCiclo: 6,
   puntosEstela: 25
@@ -256,6 +267,7 @@ function aviso(texto) {
 // --- OpenSky -----------------------------------------------
 
 async function obtenerToken() {
+  if (CONFIG.proxy) return null;              // el Worker ya autentica
   if (modoAnonimo || !CONFIG.clientId) return null;
   if (token && token.expira > Date.now() + 60000) return token.valor;
 
@@ -289,9 +301,12 @@ async function pedirEstados() {
   const dLat = CONFIG.radioKm / 111.32;
   const dLon = CONFIG.radioKm / (111.32 * Math.cos(CONFIG.lat * Math.PI / 180));
 
-  const url = "https://opensky-network.org/api/states/all" +
-    `?lamin=${CONFIG.lat - dLat}&lomin=${CONFIG.lon - dLon}` +
-    `&lamax=${CONFIG.lat + dLat}&lomax=${CONFIG.lon + dLon}`;
+  const caja = `lamin=${CONFIG.lat - dLat}&lomin=${CONFIG.lon - dLon}` +
+               `&lamax=${CONFIG.lat + dLat}&lomax=${CONFIG.lon + dLon}`;
+
+  const url = CONFIG.proxy
+    ? `${CONFIG.proxy}/states?${caja}`
+    : `https://opensky-network.org/api/states/all?${caja}`;
 
   const t = await obtenerToken();
   const res = await fetch(url, t ? { headers: { Authorization: "Bearer " + t } } : {});
@@ -305,7 +320,9 @@ async function pedirEstados() {
 async function pedirFicha(icao24) {
   if (fichas.has(icao24)) return fichas.get(icao24);
   try {
-    const r = await fetch(`https://api.adsbdb.com/v0/aircraft/${icao24}`);
+    const base = CONFIG.proxy
+      ? `${CONFIG.proxy}/aircraft/` : "https://api.adsbdb.com/v0/aircraft/";
+    const r = await fetch(base + icao24);
     const j = await r.json();
     const a = j.response && j.response.aircraft;
     const f = a ? {
@@ -323,7 +340,9 @@ async function pedirRuta(callsign) {
   if (!callsign) return null;
   if (rutas.has(callsign)) return rutas.get(callsign);
   try {
-    const r = await fetch(`https://api.adsbdb.com/v0/callsign/${callsign}`);
+    const base = CONFIG.proxy
+      ? `${CONFIG.proxy}/route/` : "https://api.adsbdb.com/v0/callsign/";
+    const r = await fetch(base + callsign);
     const j = await r.json();
     const f = j.response && j.response.flightroute;
     const v = f ? {
@@ -597,9 +616,14 @@ async function ciclo() {
   } catch (e) {
     console.error(e);
     $("punto").classList.remove("vivo");
-    $("estado").textContent = "sin conexión";
-    aviso("No se ha podido consultar OpenSky. Reintentando en " +
-          (CONFIG.refrescoMs / 1000) + " s.");
+    $("estado").textContent = "sin datos";
+    aviso(CONFIG.proxy
+      ? `El Worker no responde (${e.message}). Comprueba /health y que este ` +
+        `origen esté en la lista de ORIGENES.`
+      : "El navegador no puede hablar con OpenSky directamente: la API no " +
+        "manda cabeceras CORS, así que el fetch se bloquea aunque la URL sea " +
+        "correcta. Esto se resuelve poniendo el Worker y rellenando " +
+        "CONFIG.proxy. Detalle: " + e.message);
   }
 }
 
