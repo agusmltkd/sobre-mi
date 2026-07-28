@@ -178,6 +178,7 @@ h1{
 
   <div class="pie">
     <span id="vistos">0 vistos en la sesión</span>
+    <span id="version">—</span>
     <label>
       Radio
       <select id="radio">
@@ -195,9 +196,13 @@ h1{
 <script>
 // ============================================================
 //  SOBRE MÍ · app
-//  Posiciones: OpenSky Network
-//  Identidad y rutas: adsbdb.com
+//  Posiciones: el Worker fusiona airplanes.live, adsb.lol y adsb.fi
+//  Rutas de vuelo: adsbdb.com
 // ============================================================
+
+// Se muestra en el pie. Sirve para saber de un vistazo si lo que
+// está corriendo en el navegador es lo último que publicaste.
+const VERSION = "4";
 
 const CONFIG = {
   lat: 37.402935,
@@ -209,7 +214,7 @@ const CONFIG = {
   // elige la fuente de datos, normaliza el formato y pone las
   // cabeceras CORS que el navegador exige.
   //   ej: "https://sobre-mi.TUCUENTA.workers.dev"
-  proxy: "https://sobre-mi.mayoragustin01.workers.dev",
+  proxy: "",
 
   refrescoMs: 15000,
 
@@ -609,7 +614,9 @@ async function ciclo() {
     aviso(CONFIG.proxy
       ? `El Worker no ha devuelto datos: ${e.message}. Abre /diag para ver ` +
         `qué fuentes están respondiendo.`
-      : "Falta rellenar CONFIG.proxy con la URL del Worker.");
+      : "Esta copia no tiene CONFIG.proxy relleno. Si ya lo rellenaste, el " +
+        "navegador está sirviendo una versión guardada en caché: recarga " +
+        "añadiendo ?v=" + VERSION + " al final de la URL.");
   }
 }
 
@@ -657,6 +664,10 @@ document.addEventListener("visibilitychange", () => {
 // --- Arranque ----------------------------------------------
 
 $("sitio").textContent = CONFIG.nombre;
+$("version").textContent = "v" + VERSION + " · " +
+  (CONFIG.proxy ? "worker ok" : "SIN PROXY");
+if (!CONFIG.proxy) $("version").style.color = "var(--sello)";
+
 ciclo();
 setInterval(ciclo, CONFIG.refrescoMs);
 

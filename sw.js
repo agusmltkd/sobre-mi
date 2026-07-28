@@ -1,10 +1,14 @@
 // Service worker de "Sobre mí".
-// Estrategia: la carcasa de la app se sirve desde caché para que
-// abra al instante y funcione sin cobertura; los datos de vuelo
-// nunca se cachean, porque un avión de hace veinte minutos es
-// peor que no tener dato.
+//
+// Estrategia: RED PRIMERO para el documento, caché primero para lo
+// que no cambia (iconos, manifiesto).
+//
+// La versión anterior hacía caché primero para todo, y eso tiene un
+// efecto perverso: los cambios que publicas no llegan nunca, porque
+// el navegador sigue sirviendo la copia guardada. Un fallo de red es
+// molesto de vez en cuando; servir código viejo lo es siempre.
 
-const CACHE = "sobre-mi-v3";
+const CACHE = "sobre-mi-v4";
 
 const CARCASA = [
   "./",
@@ -34,12 +38,37 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
 
-  // Todo lo que sea API va directo a red, sin pasar por caché.
-  if (url.hostname.includes("opensky-network.org") ||
-      url.hostname.includes("adsbdb.com")) {
+  // Las APIs van directas a la red, sin pasar por caché: un avión
+  // de hace veinte minutos es peor que no tener dato.
+  if (url.hostname.includes("workers.dev") ||
+      url.hostname.includes("adsbdb.com") ||
+      url.hostname.includes("airplanes.live") ||
+      url.hostname.includes("adsb.lol") ||
+      url.hostname.includes("adsb.fi") ||
+      url.hostname.includes("opensky-network.org")) {
     return;
   }
 
+  const esDocumento = e.request.mode === "navigate" ||
+                      url.pathname.endsWith(".html") ||
+                      url.pathname.endsWith("/");
+
+  if (esDocumento) {
+    // Red primero: si hay conexión ves siempre la última versión, y
+    // la copia guardada solo entra en juego cuando no la hay.
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const copia = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copia));
+          return res;
+        })
+        .catch(() => caches.match(e.request).then(g => g || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  // El resto (iconos, manifiesto) no cambia: caché primero.
   e.respondWith(
     caches.match(e.request).then(guardado => guardado || fetch(e.request))
   );
