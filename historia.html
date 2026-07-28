@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sobre mí · historia</title>
+<meta name="theme-color" content="#E8E2D2">
+<link rel="apple-touch-icon" href="icono.png">
+<style>
+:root{
+  --papel:#E8E2D2; --papel-hondo:#DED6C3; --papel-marcado:#D4CBB5;
+  --tinta:#1C1B18; --tinta-media:#4A4741; --tenue:#6B675C;
+  --regla:#B4AE9C; --sello:#8C3A1E;
+  --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",var(--mono);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--papel);color:var(--tinta);font-family:var(--mono);
+  font-size:14px;line-height:1.35;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-image:
+    radial-gradient(circle at 20% 15%,rgba(0,0,0,.025) 0 30%,transparent 60%),
+    radial-gradient(circle at 85% 80%,rgba(0,0,0,.02) 0 25%,transparent 55%);
+  background-attachment:fixed;
+}
+.envoltura{max-width:640px;margin:0 auto;padding:0 16px 48px}
+
+header{padding:14px 0 10px;border-bottom:1px solid var(--regla);margin-bottom:18px;
+       display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+h1{font-family:var(--display);font-size:26px;font-weight:600;
+   letter-spacing:.06em;text-transform:uppercase;line-height:1}
+header a{font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+         color:var(--sello);text-decoration:none;
+         border-bottom:1px solid var(--sello);padding-bottom:1px}
+
+section{margin-bottom:26px}
+h2{font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+   color:var(--tenue);margin-bottom:9px;padding-bottom:5px;
+   border-bottom:1px solid var(--regla)}
+
+.marcadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:12px}
+.marcador{background:var(--papel-hondo);border:1px solid var(--regla);padding:10px 12px}
+.marcador .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tenue)}
+.marcador .v{font-family:var(--display);font-size:27px;font-weight:600;line-height:1.05;margin-top:3px}
+.marcador .u{font-size:9px;color:var(--tenue);letter-spacing:.08em}
+
+.lienzo{background:var(--papel-hondo);border:1px solid var(--regla);padding:12px}
+.lienzo svg{display:block;width:100%;height:auto}
+
+.barras{display:flex;flex-direction:column;gap:6px}
+.barra{display:grid;grid-template-columns:78px 1fr 34px;align-items:center;gap:9px;font-size:11px}
+.barra .et{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--tinta-media)}
+.barra .pista{height:11px;background:var(--papel-marcado);position:relative}
+.barra .relleno{height:100%;background:var(--tinta)}
+.barra .n{text-align:right;color:var(--tenue);font-size:10px}
+
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--tenue);
+   text-align:left;padding:5px 6px;border-bottom:1px solid var(--regla);font-weight:400}
+td{padding:6px;border-bottom:1px solid rgba(180,174,156,.45)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr td:first-child{color:var(--sello);font-weight:600}
+
+.controles{display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+           padding-top:14px;border-top:1px solid var(--regla);margin-top:8px}
+button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+       background:transparent;color:var(--tenue);border:1px solid var(--regla);
+       padding:6px 10px;cursor:pointer}
+button:hover{border-color:var(--tinta);color:var(--tinta)}
+button.peligro:hover{border-color:var(--sello);color:var(--sello)}
+.nota{font-size:10px;color:var(--tenue);letter-spacing:.05em;margin-top:8px}
+.vacio{padding:34px 0;text-align:center;color:var(--tenue);font-size:12px}
+</style>
+</head>
+<body>
+<div class="envoltura">
+
+  <header>
+    <h1>Historia</h1>
+    <a href="index.html">← En vivo</a>
+  </header>
+
+  <div id="contenido"><div class="vacio">Leyendo el registro…</div></div>
+
+</div>
+
+<script>
+// ============================================================
+//  SOBRE MÍ · historia
+//  Lee lo que la app en vivo va guardando en IndexedDB y lo
+//  convierte en gráficas. No consulta ninguna API: todo lo que
+//  se ve aquí lo has recogido tú.
+// ============================================================
+
+const BD_NOMBRE = "sobre-mi";
+const RUMBOS = ["N","NNE","NE","ENE","E","ESE","SE","SSE",
+                "S","SSO","SO","OSO","O","ONO","NO","NNO"];
+
+const $ = id => document.getElementById(id);
+const escapar = s => String(s == null ? "" : s)
+  .replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+function abrirBD() {
+  return new Promise((res, rej) => {
+    const p = indexedDB.open(BD_NOMBRE, 1);
+    p.onupgradeneeded = () => {
+      const d = p.result;
+      if (!d.objectStoreNames.contains("avistamientos")) {
+        const s = d.createObjectStore("avistamientos", { keyPath: "id" });
+        s.createIndex("fecha", "fecha");
+        s.createIndex("icao24", "icao24");
+      }
+      if (!d.objectStoreNames.contains("muestras")) {
+        d.createObjectStore("muestras", { keyPath: "t" });
+      }
+    };
+    p.onsuccess = () => res(p.result);
+    p.onerror = () => rej(p.error);
+  });
+}
+
+const leerTodo = (bd, almacen) => new Promise((res, rej) => {
+  const p = bd.transaction(almacen, "readonly").objectStore(almacen).getAll();
+  p.onsuccess = () => res(p.result);
+  p.onerror = () => rej(p.error);
+});
+
+// --- Piezas de dibujo ---------------------------------------
+
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(t, attrs) {
+  const el = document.createElementNS(NS, t);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+
+// Rosa de acimuts: por dónde te entra el tráfico. Con la pista al
+// este, lo normal es que salgan dos lóbulos opuestos y no un círculo.
+function rosa(registros) {
+  const sectores = new Array(16).fill(0);
+  for (const r of registros) {
+    if (typeof r.acimut !== "number") continue;
+    sectores[Math.round(r.acimut / 22.5) % 16]++;
+  }
+  const max = Math.max(1, ...sectores);
+
+  const svg = svgEl("svg", { viewBox: "0 0 300 300" });
+  const cx = 150, cy = 150, R = 116;
+
+  for (const f of [0.25, 0.5, 0.75, 1]) {
+    svg.appendChild(svgEl("circle", { cx, cy, r: R * f, fill: "none",
+      stroke: "#B4AE9C", "stroke-width": f === 1 ? 1 : .5,
+      "stroke-dasharray": f === 1 ? "none" : "2 3" }));
+  }
+
+  sectores.forEach((n, i) => {
+    if (!n) return;
+    const r = (n / max) * R;
+    const a0 = (i * 22.5 - 11.25) * Math.PI / 180;
+    const a1 = (i * 22.5 + 11.25) * Math.PI / 180;
+    const pt = (ang, rad) => `${(cx + Math.sin(ang) * rad).toFixed(1)} ` +
+                             `${(cy - Math.cos(ang) * rad).toFixed(1)}`;
+    svg.appendChild(svgEl("path", {
+      d: `M ${cx} ${cy} L ${pt(a0, r)} A ${r} ${r} 0 0 1 ${pt(a1, r)} Z`,
+      fill: "#1C1B18", "fill-opacity": (0.22 + 0.55 * (n / max)).toFixed(2),
+      stroke: "#E8E2D2", "stroke-width": .6 }));
+  });
+
+  ["N","E","S","O"].forEach((et, i) => {
+    const a = i * 90 * Math.PI / 180;
+    const t = svgEl("text", {
+      x: cx + Math.sin(a) * (R + 14), y: cy - Math.cos(a) * (R + 14) + 4,
+      fill: "#6B675C", "font-size": 11, "font-family": "monospace",
+      "text-anchor": "middle" });
+    t.textContent = et;
+    svg.appendChild(t);
+  });
+
+  return svg;
+}
+
+// Perfil de tráfico medio por hora del día, a partir de las
+// muestras de recuento que guarda la app en vivo.
+function porHora(muestras) {
+  const suma = new Array(24).fill(0), cuenta = new Array(24).fill(0);
+  for (const m of muestras) {
+    const hh = new Date(m.t).getHours();
+    suma[hh] += m.n; cuenta[hh]++;
+  }
+  const media = suma.map((s, i) => cuenta[i] ? s / cuenta[i] : 0);
+  const max = Math.max(1, ...media);
+
+  const svg = svgEl("svg", { viewBox: "0 0 400 120" });
+  const base = 100, alto = 84, ancho = 400 / 24;
+
+  media.forEach((v, i) => {
+    if (cuenta[i] === 0) return;
+    const h = (v / max) * alto;
+    svg.appendChild(svgEl("rect", {
+      x: i * ancho + 1.5, y: base - h, width: ancho - 3, height: Math.max(h, .8),
+      fill: "#1C1B18", "fill-opacity": .78 }));
+  });
+
+  svg.appendChild(svgEl("line", { x1: 0, y1: base, x2: 400, y2: base,
+    stroke: "#B4AE9C", "stroke-width": 1 }));
+
+  [0, 6, 12, 18].forEach(hh => {
+    const t = svgEl("text", { x: hh * ancho + ancho / 2, y: base + 14,
+      fill: "#6B675C", "font-size": 9, "font-family": "monospace",
+      "text-anchor": "middle" });
+    t.textContent = String(hh).padStart(2, "0");
+    svg.appendChild(t);
+  });
+
+  return svg;
+}
+
+// Reparto de altitudes en el momento de máxima aproximación.
+function alturas(registros) {
+  const cortes = [0, 3000, 6000, 10000, 20000, 30000, 45000];
+  const etiquetas = ["<3k", "3–6k", "6–10k", "FL100–200", "FL200–300", ">FL300"];
+  const cubos = new Array(6).fill(0);
+
+  for (const r of registros) {
+    const p = r.minPies || 0;
+    for (let i = 0; i < 6; i++) {
+      if (p >= cortes[i] && p < cortes[i + 1]) { cubos[i]++; break; }
+    }
+  }
+  return listaBarras(etiquetas.map((e, i) => [e, cubos[i]]));
+}
+
+function listaBarras(pares, limite) {
+  const orden = [...pares].filter(p => p[1] > 0);
+  if (limite) orden.sort((a, b) => b[1] - a[1]);
+  const top = limite ? orden.slice(0, limite) : orden;
+  const max = Math.max(1, ...top.map(p => p[1]));
+
+  const div = document.createElement("div");
+  div.className = "barras";
+  div.innerHTML = top.map(([et, n]) => `
+    <div class="barra">
+      <span class="et">${escapar(et)}</span>
+      <span class="pista"><span class="relleno" style="width:${(n / max * 100).toFixed(1)}%"></span></span>
+      <span class="n">${n}</span>
+    </div>`).join("") || `<div class="nota">Sin datos todavía.</div>`;
+  return div;
+}
+
+function cuenta(registros, campo) {
+  const m = new Map();
+  for (const r of registros) {
+    const v = (r[campo] || "").trim();
+    if (v) m.set(v, (m.get(v) || 0) + 1);
+  }
+  return [...m.entries()];
+}
+
+// --- Montaje ------------------------------------------------
+
+function seccion(titulo, nodo) {
+  const s = document.createElement("section");
+  const h = document.createElement("h2");
+  h.textContent = titulo;
+  s.appendChild(h);
+  s.appendChild(nodo);
+  return s;
+}
+
+function envolverLienzo(svg) {
+  const d = document.createElement("div");
+  d.className = "lienzo";
+  d.appendChild(svg);
+  return d;
+}
+
+function marcador(k, v, u) {
+  return `<div class="marcador"><div class="k">${k}</div>` +
+         `<div class="v">${v}</div><div class="u">${u || ""}</div></div>`;
+}
+
+async function pintar() {
+  const cont = $("contenido");
+  let bd, registros, muestras;
+
+  try {
+    bd = await abrirBD();
+    [registros, muestras] = await Promise.all([
+      leerTodo(bd, "avistamientos"), leerTodo(bd, "muestras")
+    ]);
+  } catch (e) {
+    cont.innerHTML = `<div class="vacio">No se ha podido abrir el registro.<br>` +
+      `${escapar(e.message || e)}</div>`;
+    return;
+  }
+
+  if (!registros.length) {
+    cont.innerHTML = `<div class="vacio">Todavía no hay nada registrado.<br><br>` +
+      `Deja la vista en vivo abierta un rato y vuelve.<br>` +
+      `El registro se guarda en este navegador, así que cada dispositivo ` +
+      `tiene el suyo.</div>`;
+    return;
+  }
+
+  cont.innerHTML = "";
+
+  const unicos = new Set(registros.map(r => r.icao24)).size;
+  const dias = new Set(registros.map(r => r.fecha)).size;
+  const masCerca = registros.reduce((a, b) => a.minKm < b.minKm ? a : b);
+  const masAlto = registros.reduce((a, b) => a.maxPies > b.maxPies ? a : b);
+
+  const resumen = document.createElement("div");
+  resumen.className = "marcadores";
+  resumen.innerHTML =
+    marcador("Aviones distintos", unicos, "desde el primer día") +
+    marcador("Días con registro", dias) +
+    marcador("Paso más cercano", masCerca.minKm.toFixed(2), "km · " +
+      escapar(masCerca.callsign || masCerca.icao24.toUpperCase())) +
+    marcador("Más alto visto", "FL" + Math.round(masAlto.maxPies / 100),
+      escapar(masAlto.callsign || ""));
+  cont.appendChild(seccion("Resumen", resumen));
+
+  cont.appendChild(seccion("Por dónde te entran", envolverLienzo(rosa(registros))));
+
+  if (muestras.length > 3) {
+    cont.appendChild(seccion("Tráfico medio por hora del día",
+                             envolverLienzo(porHora(muestras))));
+  }
+
+  cont.appendChild(seccion("Altitud al pasar más cerca", alturas(registros)));
+  cont.appendChild(seccion("Modelos más vistos", listaBarras(cuenta(registros, "tipo"), 8)));
+  cont.appendChild(seccion("Compañías", listaBarras(cuenta(registros, "operador"), 8)));
+
+  const rutas = new Map();
+  for (const r of registros) {
+    if (!r.origen || !r.destino) continue;
+    const k = r.origen + " → " + r.destino;
+    rutas.set(k, (rutas.get(k) || 0) + 1);
+  }
+  cont.appendChild(seccion("Rutas", listaBarras([...rutas.entries()], 8)));
+
+  // Tabla de los pasos más cercanos de todos los tiempos.
+  const cercanos = [...registros].sort((a, b) => a.minKm - b.minKm).slice(0, 12);
+  const tabla = document.createElement("table");
+  tabla.innerHTML =
+    `<thead><tr><th>Vuelo</th><th>Modelo</th><th>Ruta</th>
+     <th class="num">km</th><th class="num">Altitud</th><th>Día</th></tr></thead>
+     <tbody>${cercanos.map(r => `<tr>
+       <td>${escapar(r.callsign || r.icao24.toUpperCase())}</td>
+       <td>${escapar(r.tipo || "—")}</td>
+       <td>${escapar(r.origen && r.destino ? r.origen + "→" + r.destino : "—")}</td>
+       <td class="num">${r.minKm.toFixed(2)}</td>
+       <td class="num">${Math.round(r.minPies).toLocaleString("es-ES")} ft</td>
+       <td>${escapar(r.fecha.slice(5))}</td></tr>`).join("")}</tbody>`;
+  cont.appendChild(seccion("Los que más cerca han pasado", tabla));
+
+  // Controles
+  const ctr = document.createElement("div");
+  ctr.className = "controles";
+  ctr.innerHTML = `<button id="csv">Exportar CSV</button>
+                   <button id="borrar" class="peligro">Borrar registro</button>`;
+  cont.appendChild(ctr);
+
+  const nota = document.createElement("div");
+  nota.className = "nota";
+  nota.textContent = `${registros.length} registros · ${muestras.length} muestras · ` +
+                     `guardado solo en este navegador`;
+  cont.appendChild(nota);
+
+  $("csv").addEventListener("click", () => {
+    const cols = ["fecha","icao24","callsign","tipo","modelo","matricula",
+                  "operador","origen","destino","minKm","acimut","minPies",
+                  "maxPies","veces"];
+    const filas = registros.map(r => cols.map(c => {
+      const v = r[c] == null ? "" : String(r[c]);
+      return /[",;\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+    }).join(","));
+    const blob = new Blob([cols.join(",") + "\n" + filas.join("\n")],
+                          { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "sobre-mi-" + new Date().toISOString().slice(0, 10) + ".csv";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $("borrar").addEventListener("click", () => {
+    if (!confirm("Esto borra todo el registro de este navegador. ¿Seguro?")) return;
+    const t = bd.transaction(["avistamientos", "muestras"], "readwrite");
+    t.objectStore("avistamientos").clear();
+    t.objectStore("muestras").clear();
+    t.oncomplete = () => location.reload();
+  });
+}
+
+pintar();
+</script>
+</body>
+</html>

@@ -153,6 +153,11 @@ h1{
          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .telemetria{font-size:10px;color:var(--tenue);margin-top:4px;letter-spacing:.03em}
 .paso{color:var(--sello);font-weight:600}
+.nuevo{
+  font-family:var(--mono);font-size:8px;letter-spacing:.14em;
+  text-transform:uppercase;vertical-align:middle;margin-left:7px;
+  border:1px solid var(--sello);color:var(--sello);padding:1px 4px;
+}
 
 .medida{padding:9px 11px 9px 0;text-align:right;display:flex;
         flex-direction:column;justify-content:center;flex:none}
@@ -179,6 +184,8 @@ h1{
   background:transparent;color:var(--tenue);
   border:1px solid var(--regla);padding:5px 9px;cursor:pointer;
 }
+.pie a{color:var(--sello);text-decoration:none;
+       border-bottom:1px solid var(--sello);padding-bottom:1px}
 .pie button[aria-pressed="true"]{border-color:var(--tinta);color:var(--tinta)}
 .pie button:focus-visible,.pie select:focus-visible{
   outline:2px solid var(--sello);outline-offset:2px}
@@ -222,6 +229,7 @@ h1{
 
   <div class="pie">
     <span id="vistos">0 vistos</span>
+    <a href="historia.html">Historia →</a>
     <span id="version">—</span>
     <label>Radio
       <select id="radio">
@@ -246,7 +254,7 @@ h1{
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "5";
+const VERSION = "6";
 
 const CONFIG = {
   lat: 37.402935,
@@ -266,7 +274,22 @@ const CONFIG = {
   // dentro de los próximos minutos.
   alertaKm: 3,
   alertaMinutos: 4,
-  minutosGrafica: 30
+  minutosGrafica: 30,
+
+  // Una muestra de tráfico por minuto es suficiente para las
+  // gráficas de historia y no engorda la base de datos.
+  segundosEntreMuestras: 60,
+
+  // Aeropuertos que se dibujan en el radar. El rumbo es verdadero,
+  // no magnético: la 09/27 de San Pablo cae en unos 088°.
+  aeropuertos: [
+    {
+      codigo: "SVQ",
+      lat: 37.4181, lon: -5.8931,
+      pistas: [{ nombre: "09/27", rumbo: 88, largoKm: 3.36 }],
+      ejeKm: 16          // hasta dónde se prolonga el eje de aproximación
+    }
+  ]
 };
 
 // --- Estado -------------------------------------------------
@@ -334,6 +357,104 @@ function calcularPaso(a) {
     minutos: t,
     km: Math.hypot(a.x + vx * t, a.y + vy * t)
   };
+}
+
+// --- Registro persistente -----------------------------------
+//
+// IndexedDB en vez de localStorage: aquí se acumulan miles de
+// registros y localStorage se queda corto además de ser síncrono.
+// Dos almacenes: uno con un registro por avión y día, otro con el
+// recuento de tráfico muestreado cada minuto.
+
+const BD_NOMBRE = "sobre-mi";
+let bd = null;
+let conocidos = new Set();
+let ultimaMuestra = 0;
+
+function abrirBD() {
+  return new Promise((res, rej) => {
+    const p = indexedDB.open(BD_NOMBRE, 1);
+    p.onupgradeneeded = () => {
+      const d = p.result;
+      if (!d.objectStoreNames.contains("avistamientos")) {
+        const s = d.createObjectStore("avistamientos", { keyPath: "id" });
+        s.createIndex("fecha", "fecha");
+        s.createIndex("icao24", "icao24");
+      }
+      if (!d.objectStoreNames.contains("muestras")) {
+        d.createObjectStore("muestras", { keyPath: "t" });
+      }
+    };
+    p.onsuccess = () => res(p.result);
+    p.onerror = () => rej(p.error);
+  });
+}
+
+const tx = (almacen, modo) => bd.transaction(almacen, modo).objectStore(almacen);
+
+function leerTodo(almacen) {
+  return new Promise((res, rej) => {
+    const p = tx(almacen, "readonly").getAll();
+    p.onsuccess = () => res(p.result);
+    p.onerror = () => rej(p.error);
+  });
+}
+
+const hoy = () => new Date().toISOString().slice(0, 10);
+
+async function iniciarRegistro() {
+  try {
+    bd = await abrirBD();
+    const previos = await leerTodo("avistamientos");
+    conocidos = new Set(previos.map(r => r.icao24));
+  } catch (e) {
+    console.warn("sin registro persistente:", e);
+    bd = null;
+  }
+}
+
+// Un registro por avión y día: se va actualizando con el paso más
+// cercano y el rango de altitudes en lugar de guardar cada muestra.
+function registrar(lista) {
+  if (!bd || !lista.length) return;
+
+  const fecha = hoy(), ahora = Date.now();
+  const almacen = bd.transaction("avistamientos", "readwrite").objectStore("avistamientos");
+
+  for (const a of lista) {
+    const id = fecha + ":" + a.icao24;
+    const pet = almacen.get(id);
+    pet.onsuccess = () => {
+      const previo = pet.result;
+      const f = a.ficha || {};
+      const r = a.ruta;
+
+      almacen.put({
+        id, fecha, icao24: a.icao24,
+        callsign: a.callsign || (previo && previo.callsign) || "",
+        tipo: f.icaoTipo || (previo && previo.tipo) || "",
+        modelo: f.tipo || (previo && previo.modelo) || "",
+        matricula: f.matricula || (previo && previo.matricula) || "",
+        operador: f.operador || (previo && previo.operador) || "",
+        origen: (r && r.origen) || (previo && previo.origen) || "",
+        destino: (r && r.destino) || (previo && previo.destino) || "",
+        primera: previo ? previo.primera : ahora,
+        ultima: ahora,
+        minKm: previo ? Math.min(previo.minKm, a.distanciaKm) : a.distanciaKm,
+        acimut: (!previo || a.distanciaKm < previo.minKm) ? a.acimut : previo.acimut,
+        minPies: previo ? Math.min(previo.minPies, a.pies) : a.pies,
+        maxPies: previo ? Math.max(previo.maxPies, a.pies) : a.pies,
+        veces: (previo ? previo.veces : 0) + 1
+      });
+    };
+    conocidos.add(a.icao24);
+  }
+
+  if (ahora - ultimaMuestra >= CONFIG.segundosEntreMuestras * 1000) {
+    ultimaMuestra = ahora;
+    bd.transaction("muestras", "readwrite").objectStore("muestras")
+      .put({ t: ahora, n: lista.length });
+  }
 }
 
 // --- Datos --------------------------------------------------
@@ -424,7 +545,8 @@ function procesar(lista) {
       vv: a.vvPiesMin || 0,
       nudos: a.velNudos || 0,
       ficha: fichas.get(a.icao24) || inline,
-      ruta: rutas.get(a.callsign || "") || null
+      ruta: rutas.get(a.callsign || "") || null,
+      novedad: !conocidos.has(a.icao24)
     };
     av.paso = calcularPaso(av);
     salida.push(av);
@@ -548,6 +670,45 @@ function dibujarScope(aviones) {
     t.textContent = r;
     svg.appendChild(t);
   });
+
+  // Aeropuertos: la pista y su eje de aproximación prolongado.
+  // Es lo que convierte el radar en un mapa: de golpe entiendes por
+  // qué el tráfico se ordena en dos hilos y no al azar.
+  for (const ae of CONFIG.aeropuertos) {
+    const pa = proyectar(ae.lat, ae.lon);
+
+    for (const pista of ae.pistas) {
+      const rad = pista.rumbo * Math.PI / 180;
+      const ux = Math.sin(rad), uy = Math.cos(rad);
+      const mitad = pista.largoKm / 2;
+      const punto = k => ({
+        x: cx + (pa.x + ux * k) * escala,
+        y: cy - (pa.y + uy * k) * escala
+      });
+
+      // Eje prolongado a ambos lados: la senda de aproximación.
+      for (const signo of [1, -1]) {
+        const a = punto(signo * mitad), b = punto(signo * (mitad + ae.ejeKm));
+        svg.appendChild(crear("line", {
+          x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+          stroke: "#8C3A1E", "stroke-width": .6, "stroke-opacity": .38,
+          "stroke-dasharray": "5 4" }));
+      }
+
+      // La pista: barra gruesa y corta, a escala real.
+      const p1 = punto(-mitad), p2 = punto(mitad);
+      svg.appendChild(crear("line", {
+        x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+        stroke: "#1C1B18", "stroke-width": 3.2, "stroke-linecap": "butt" }));
+    }
+
+    const et = crear("text", {
+      x: cx + pa.x * escala, y: cy - pa.y * escala - 8,
+      fill: "#8C3A1E", "font-size": 9, "font-family": "monospace",
+      "font-weight": "700", "text-anchor": "middle" });
+    et.textContent = ae.codigo;
+    svg.appendChild(et);
+  }
 
   // Estelas: el registro impreso del tráfico sobre el papel.
   if (mostrarEstelas) {
@@ -750,7 +911,7 @@ function dibujarTiras(aviones) {
     tira.innerHTML = `
       <div class="canto"></div>
       <div class="cuerpo">
-        <div class="ruta">${textoRuta(a)}</div>
+        <div class="ruta">${textoRuta(a)}${a.novedad ? '<span class="nuevo">nuevo</span>' : ""}</div>
         <div class="maquina">${textoMaquina(a)}</div>
         <div class="telemetria">
           ${escapar(a.callsign || "—")} &nbsp;·&nbsp; ${formatoAltitud(a.pies)} ${tend}
@@ -823,6 +984,7 @@ async function ciclo() {
       { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     aviso("");
 
+    registrar(lista);
     revisarAlertas(lista);
     refrescarVista();
 
@@ -894,8 +1056,12 @@ $("version").textContent = "v" + VERSION + " · " +
   (CONFIG.proxy ? "worker ok" : "SIN PROXY");
 if (!CONFIG.proxy) $("version").style.color = "var(--sello)";
 
-ciclo();
-setInterval(ciclo, CONFIG.refrescoMs);
+// El registro se abre antes del primer ciclo para que la marca de
+// "nuevo" sea fiable desde el primer avión.
+iniciarRegistro().then(() => {
+  ciclo();
+  setInterval(ciclo, CONFIG.refrescoMs);
+});
 
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("sw.js").catch(() => {});
