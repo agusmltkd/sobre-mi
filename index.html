@@ -15,12 +15,12 @@
 :root{
   --papel:#E8E2D2;
   --papel-hondo:#DED6C3;
+  --papel-marcado:#D4CBB5;
   --tinta:#1C1B18;
   --tinta-media:#4A4741;
   --tenue:#6B675C;
   --regla:#B4AE9C;
   --sello:#8C3A1E;
-  --plomo:#2E4756;
 
   --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, "Roboto Mono", monospace;
   --display: "Avenir Next Condensed", "Helvetica Neue Condensed", "Arial Narrow", var(--mono);
@@ -36,7 +36,6 @@ body{
   line-height:1.35;
   padding:env(safe-area-inset-top) env(safe-area-inset-right)
           env(safe-area-inset-bottom) env(safe-area-inset-left);
-  /* Grano de papel: dos degradados muy tenues, nada de imágenes. */
   background-image:
     radial-gradient(circle at 20% 15%, rgba(0,0,0,.025) 0 30%, transparent 60%),
     radial-gradient(circle at 85% 80%, rgba(0,0,0,.02) 0 25%, transparent 55%);
@@ -58,79 +57,121 @@ header{
 h1{
   font-family:var(--display);
   font-size:26px;font-weight:600;
-  letter-spacing:.06em;text-transform:uppercase;
-  line-height:1;
+  letter-spacing:.06em;text-transform:uppercase;line-height:1;
 }
-.sitio{font-size:10px;color:var(--tenue);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
-
-.estado{display:flex;align-items:center;gap:7px;font-size:10px;color:var(--tenue);letter-spacing:.1em}
+.sitio{font-size:10px;color:var(--tenue);letter-spacing:.14em;
+       text-transform:uppercase;margin-top:4px}
+.estado{display:flex;align-items:center;gap:7px;font-size:10px;
+        color:var(--tenue);letter-spacing:.1em;text-align:right}
 .punto{width:7px;height:7px;border-radius:50%;background:var(--sello);flex:none}
 .punto.vivo{animation:latido 2s ease-in-out infinite}
 @keyframes latido{0%,100%{opacity:1}50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.punto.vivo{animation:none}}
 
-/* ---------- Osciloscopio ---------- */
+/* ---------- Aviso y alerta ---------- */
+
+.aviso{
+  font-size:11px;color:var(--sello);
+  border-left:2px solid var(--sello);padding:8px 11px;
+  margin-bottom:14px;letter-spacing:.02em;
+}
+.alerta{
+  background:var(--sello);color:var(--papel);
+  padding:10px 13px;margin-bottom:14px;
+  display:flex;align-items:baseline;gap:10px;
+}
+.alerta .grande{font-family:var(--display);font-size:19px;
+                font-weight:600;letter-spacing:.05em}
+.alerta .chico{font-size:10px;letter-spacing:.12em;
+               text-transform:uppercase;opacity:.85}
+
+/* ---------- Radar ---------- */
 
 .cuadro{
-  position:relative;
-  background:var(--papel-hondo);
-  border:1px solid var(--regla);
-  padding:10px;
-  margin-bottom:18px;
+  position:relative;background:var(--papel-hondo);
+  border:1px solid var(--regla);padding:10px;margin-bottom:14px;
 }
 .cuadro svg{display:block;width:100%;height:auto}
-.etiqueta-cuadro{
-  position:absolute;top:8px;left:12px;
-  font-size:9px;letter-spacing:.16em;color:var(--tenue);text-transform:uppercase;
+.etiqueta-cuadro,.cuenta-cuadro{
+  position:absolute;top:8px;font-size:9px;letter-spacing:.16em;
+  color:var(--tenue);text-transform:uppercase;
 }
-.cuenta-cuadro{
-  position:absolute;top:8px;right:12px;
-  font-size:9px;letter-spacing:.16em;color:var(--tenue);text-transform:uppercase;
+.etiqueta-cuadro{left:12px}
+.cuenta-cuadro{right:12px}
+
+/* ---------- Panel de detalle ---------- */
+
+.detalle{
+  border:1px solid var(--tinta);background:var(--papel-hondo);
+  margin-bottom:14px;overflow:hidden;
+}
+.detalle .foto{width:100%;display:block;background:var(--papel-marcado)}
+.detalle .credito{font-size:8px;color:var(--tenue);padding:3px 12px;
+                  letter-spacing:.08em;text-transform:uppercase}
+.detalle .interior{padding:12px}
+.detalle h2{
+  font-family:var(--display);font-size:24px;font-weight:600;
+  letter-spacing:.04em;color:var(--sello);line-height:1.05;
+}
+.detalle .sub{font-size:11px;color:var(--tenue);margin-top:3px}
+.rejilla{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));
+  gap:9px 12px;margin-top:12px;padding-top:11px;border-top:1px solid var(--regla);
+}
+.dato .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tenue)}
+.dato .v{font-size:15px;font-weight:600;margin-top:2px}
+.cerrar{
+  float:right;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  background:transparent;border:1px solid var(--regla);color:var(--tenue);
+  padding:4px 8px;cursor:pointer;text-transform:uppercase;
 }
 
-/* ---------- Tiras de vuelo ---------- */
+/* ---------- Tiras ---------- */
 
 .tiras{display:flex;flex-direction:column;gap:8px}
-
 .tira{
-  display:grid;
-  grid-template-columns:6px 1fr auto;
-  background:var(--papel-hondo);
-  border:1px solid var(--regla);
-  cursor:pointer;
-  transition:background .12s ease;
+  display:grid;grid-template-columns:6px 1fr auto;
+  background:var(--papel-hondo);border:1px solid var(--regla);
+  cursor:pointer;transition:background .12s ease;
 }
-.tira:hover,.tira:focus-visible{background:#D6CDB8}
+.tira:hover{background:var(--papel-marcado)}
 .tira:focus-visible{outline:2px solid var(--sello);outline-offset:2px}
-.tira.marcada{background:#D6CDB8;border-color:var(--tinta)}
-
+.tira.marcada{background:var(--papel-marcado);border-color:var(--tinta)}
 .canto{background:var(--tinta)}
 .tira.baja .canto{background:var(--sello)}
+.tira.encima .canto{background:repeating-linear-gradient(
+  180deg,var(--sello) 0 4px,var(--papel-hondo) 4px 8px)}
 
 .cuerpo{padding:9px 11px;min-width:0}
 .ruta{
-  font-family:var(--display);
-  font-size:19px;font-weight:600;letter-spacing:.04em;
-  color:var(--sello);
+  font-family:var(--display);font-size:19px;font-weight:600;
+  letter-spacing:.04em;color:var(--sello);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .ruta .lugar{font-size:11px;color:var(--tenue);letter-spacing:.06em;margin-left:6px}
 .maquina{font-size:11px;color:var(--tinta-media);margin-top:3px;
          white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .telemetria{font-size:10px;color:var(--tenue);margin-top:4px;letter-spacing:.03em}
+.paso{color:var(--sello);font-weight:600}
 
-.medida{
-  padding:9px 11px 9px 0;text-align:right;display:flex;
-  flex-direction:column;justify-content:center;flex:none;
-}
+.medida{padding:9px 11px 9px 0;text-align:right;display:flex;
+        flex-direction:column;justify-content:center;flex:none}
 .km{font-size:20px;font-weight:600;line-height:1}
 .rumbo{font-size:9px;color:var(--tenue);letter-spacing:.12em;margin-top:3px}
 
-/* ---------- Pie ---------- */
+/* ---------- Gráfica y pie ---------- */
+
+.chispa{
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--regla);
+}
+.chispa .cab{display:flex;justify-content:space-between;
+             font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+             color:var(--tenue);margin-bottom:6px}
+.chispa svg{display:block;width:100%;height:44px}
 
 .pie{
-  margin-top:20px;padding-top:12px;border-top:1px solid var(--regla);
-  display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;
+  margin-top:16px;padding-top:12px;border-top:1px solid var(--regla);
+  display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;
   font-size:10px;color:var(--tenue);letter-spacing:.1em;text-transform:uppercase;
 }
 .pie button,.pie select{
@@ -139,13 +180,8 @@ h1{
   border:1px solid var(--regla);padding:5px 9px;cursor:pointer;
 }
 .pie button[aria-pressed="true"]{border-color:var(--tinta);color:var(--tinta)}
-.pie button:focus-visible,.pie select:focus-visible{outline:2px solid var(--sello);outline-offset:2px}
-
-.aviso{
-  font-size:11px;color:var(--sello);
-  border-left:2px solid var(--sello);padding:8px 11px;
-  margin-bottom:14px;letter-spacing:.02em;text-transform:none;
-}
+.pie button:focus-visible,.pie select:focus-visible{
+  outline:2px solid var(--sello);outline-offset:2px}
 .vacio{padding:26px 0;text-align:center;color:var(--tenue);font-size:12px}
 </style>
 </head>
@@ -166,43 +202,51 @@ h1{
     </div>
   </header>
 
+  <div id="alerta"></div>
   <div id="aviso"></div>
 
   <div class="cuadro">
     <span class="etiqueta-cuadro">Vertical</span>
     <span class="cuenta-cuadro" id="cuenta">—</span>
-    <svg id="scope" viewBox="0 0 400 400" role="img" aria-label="Tráfico aéreo alrededor de tu posición"></svg>
+    <svg id="scope" viewBox="0 0 400 400" role="img"
+         aria-label="Tráfico aéreo alrededor de tu posición"></svg>
   </div>
 
+  <div id="detalle"></div>
   <div class="tiras" id="tiras"></div>
 
+  <div class="chispa">
+    <div class="cab"><span>Tráfico · última media hora</span><span id="chispaMax">—</span></div>
+    <svg id="grafica" viewBox="0 0 400 44" preserveAspectRatio="none"></svg>
+  </div>
+
   <div class="pie">
-    <span id="vistos">0 vistos en la sesión</span>
+    <span id="vistos">0 vistos</span>
     <span id="version">—</span>
-    <label>
-      Radio
+    <label>Radio
       <select id="radio">
         <option value="10">10 km</option>
         <option value="25" selected>25 km</option>
         <option value="50">50 km</option>
+        <option value="100">100 km</option>
       </select>
     </label>
-    <button id="btnLuz" aria-pressed="false">Pantalla encendida</button>
     <button id="btnEstelas" aria-pressed="true">Estelas</button>
+    <button id="btnSonido" aria-pressed="false">Aviso sonoro</button>
+    <button id="btnLuz" aria-pressed="false">Pantalla encendida</button>
   </div>
 
 </div>
-
 <script>
 // ============================================================
 //  SOBRE MÍ · app
 //  Posiciones: el Worker fusiona airplanes.live, adsb.lol y adsb.fi
-//  Rutas de vuelo: adsbdb.com
+//  Fichas, fotos y rutas: adsbdb.com
 // ============================================================
 
-// Se muestra en el pie. Sirve para saber de un vistazo si lo que
-// está corriendo en el navegador es lo último que publicaste.
-const VERSION = "4";
+// Se muestra en el pie: sirve para saber de un vistazo si lo que
+// corre en el navegador es lo último que publicaste.
+const VERSION = "5";
 
 const CONFIG = {
   lat: 37.402935,
@@ -210,43 +254,54 @@ const CONFIG = {
   nombre: "Sevilla · 37.4029 N, 5.9578 O",
   radioKm: 25,
 
-  // URL del Worker, sin barra final. Es obligatorio: el Worker
-  // elige la fuente de datos, normaliza el formato y pone las
-  // cabeceras CORS que el navegador exige.
-  //   ej: "https://sobre-mi.TUCUENTA.workers.dev"
+  // URL del Worker, sin barra final.
   proxy: "https://sobre-mi.mayoragustin01.workers.dev",
 
   refrescoMs: 15000,
-
   maxTiras: 12,
   maxFichasPorCiclo: 6,
-  puntosEstela: 25
+  puntosEstela: 25,
+
+  // Salta el aviso cuando algo va a pasar a menos de esta distancia
+  // dentro de los próximos minutos.
+  alertaKm: 3,
+  alertaMinutos: 4,
+  minutosGrafica: 30
 };
 
-// --- Estado en memoria -------------------------------------
+// --- Estado -------------------------------------------------
 
-let estelas = new Map();     // icao24 -> [{x,y}]
-let fichas = new Map();      // icao24 -> ficha | null
-let rutas = new Map();       // callsign -> ruta | null
-let vistos = new Map();      // icao24 -> etiqueta
-let marcado = null;          // icao24 seleccionado
+let estelas = new Map();
+let fichas = new Map();
+let rutas = new Map();
+let vistos = new Map();
+let tipos = new Map();
+let historial = [];
+let marcado = null;
 let mostrarEstelas = true;
+let sonido = false;
+let audio = null;
 let wakeLock = null;
+let ultimos = [];
+let fuenteActual = "";
+let aportes = {};
+let avisados = new Set();
 
-// --- Utilidades --------------------------------------------
+// --- Utilidades ---------------------------------------------
 
 const $ = id => document.getElementById(id);
 const RUMBOS = ["N","NE","E","SE","S","SO","O","NO"];
 const octante = az => Math.round(az / 45) % 8;
+const escapar = s => String(s == null ? "" : s).replace(/[&<>"]/g,
+  c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
 
-// Proyección local plana. A 50 km el error es despreciable y nos
-// ahorra trigonometría esférica en cada refresco.
+// Proyección local plana: a 100 km el error sigue siendo de metros.
 function proyectar(lat, lon) {
-  const x = (lon - CONFIG.lon) * 111.32 * Math.cos(CONFIG.lat * Math.PI / 180);
-  const y = (lat - CONFIG.lat) * 111.32;
-  return { x, y };
+  return {
+    x: (lon - CONFIG.lon) * 111.32 * Math.cos(CONFIG.lat * Math.PI / 180),
+    y: (lat - CONFIG.lat) * 111.32
+  };
 }
-
 const distancia = p => Math.hypot(p.x, p.y);
 const acimut = p => (Math.atan2(p.x, p.y) * 180 / Math.PI + 360) % 360;
 
@@ -255,52 +310,61 @@ function formatoAltitud(pies) {
   return Math.round(pies / 100) * 100 + " ft";
 }
 
-function aviso(texto) {
-  $("aviso").innerHTML = texto ? `<div class="aviso">${texto}</div>` : "";
+const aviso = t => $("aviso").innerHTML = t ? `<div class="aviso">${t}</div>` : "";
+
+// Punto de máxima aproximación. Con la posición y el vector de
+// velocidad se resuelve analíticamente: el instante en que la
+// distancia es mínima es cuando la posición y la velocidad son
+// perpendiculares. Es lo que de verdad responde a "¿me pasa por
+// encima?", porque un avión lejano acercándose importa más que
+// uno cercano que ya se va.
+function calcularPaso(a) {
+  const kmMin = a.nudos * 1.852 / 60;
+  if (kmMin < 0.5) return null;
+
+  const rad = a.rumbo * Math.PI / 180;
+  const vx = Math.sin(rad) * kmMin;
+  const vy = Math.cos(rad) * kmMin;
+
+  const t = -(a.x * vx + a.y * vy) / (vx * vx + vy * vy);
+  if (t < 0) return { alejandose: true };
+
+  return {
+    alejandose: false,
+    minutos: t,
+    km: Math.hypot(a.x + vx * t, a.y + vy * t)
+  };
 }
 
-// --- Datos ---------------------------------------------------
-
-let fuenteActual = "";
-let aportes = {};
+// --- Datos --------------------------------------------------
 
 async function pedirAviones() {
   if (!CONFIG.proxy) throw new Error("falta CONFIG.proxy");
-
   const res = await fetch(
-    `${CONFIG.proxy}/aviones?lat=${CONFIG.lat}&lon=${CONFIG.lon}&km=${CONFIG.radioKm}`
-  );
+    `${CONFIG.proxy}/aviones?lat=${CONFIG.lat}&lon=${CONFIG.lon}&km=${CONFIG.radioKm}`);
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
-
   fuenteActual = j.fuente || "";
   aportes = j.aportes || {};
   return j.aviones || [];
 }
 
 // "No hay aviones" y "nadie está escuchando" se ven igual desde
-// aquí, pero significan cosas opuestas. Si ninguna red ha aportado
-// un solo contacto, lo que falta es cobertura, no tráfico.
-function hayCobertura() {
-  const valores = Object.values(aportes);
-  return valores.some(v => typeof v === "number" && v > 0);
-}
-
-// --- adsbdb ------------------------------------------------
+// aquí y significan cosas opuestas.
+const hayCobertura = () =>
+  Object.values(aportes).some(v => typeof v === "number" && v > 0);
 
 async function pedirFicha(icao24) {
   if (fichas.has(icao24)) return fichas.get(icao24);
   try {
-    const base = CONFIG.proxy
-      ? `${CONFIG.proxy}/aircraft/` : "https://api.adsbdb.com/v0/aircraft/";
-    const r = await fetch(base + icao24);
+    const r = await fetch(`${CONFIG.proxy}/aircraft/${icao24}`);
     const j = await r.json();
     const a = j.response && j.response.aircraft;
     const f = a ? {
-      tipo: a.type || "",
-      icaoTipo: a.icao_type || "",
-      matricula: a.registration || "",
-      operador: a.registered_owner || ""
+      tipo: a.type || "", icaoTipo: a.icao_type || "",
+      matricula: a.registration || "", operador: a.registered_owner || "",
+      pais: a.registered_owner_country_name || "",
+      foto: a.url_photo_thumbnail || a.url_photo || ""
     } : null;
     fichas.set(icao24, f);
     return f;
@@ -311,23 +375,23 @@ async function pedirRuta(callsign) {
   if (!callsign) return null;
   if (rutas.has(callsign)) return rutas.get(callsign);
   try {
-    const base = CONFIG.proxy
-      ? `${CONFIG.proxy}/route/` : "https://api.adsbdb.com/v0/callsign/";
-    const r = await fetch(base + callsign);
+    const r = await fetch(`${CONFIG.proxy}/route/${callsign}`);
     const j = await r.json();
     const f = j.response && j.response.flightroute;
     const v = f ? {
       origen: (f.origin && (f.origin.iata_code || f.origin.icao_code)) || "",
       destino: (f.destination && (f.destination.iata_code || f.destination.icao_code)) || "",
       origenNombre: (f.origin && f.origin.municipality) || "",
-      destinoNombre: (f.destination && f.destination.municipality) || ""
+      destinoNombre: (f.destination && f.destination.municipality) || "",
+      origenPais: (f.origin && f.origin.country_name) || "",
+      destinoPais: (f.destination && f.destination.country_name) || ""
     } : null;
     rutas.set(callsign, v);
     return v;
   } catch (e) { return null; }
 }
 
-// --- Procesado ---------------------------------------------
+// --- Procesado ----------------------------------------------
 
 function procesar(lista) {
   const salida = [];
@@ -339,16 +403,15 @@ function procesar(lista) {
     const d = distancia(p);
     if (d > CONFIG.radioKm) continue;
 
-    // Las fuentes readsb ya traen tipo y matrícula con la posición,
-    // así que la ficha suele estar completa sin consultar nada.
+    // Las fuentes readsb traen tipo y matrícula con la posición, así
+    // que la ficha básica ya viene hecha; solo la foto y el operador
+    // requieren consultar.
     const inline = (a.tipo || a.matricula) ? {
-      tipo: a.descripcion || a.tipo || "",
-      icaoTipo: a.tipo || "",
-      matricula: a.matricula || "",
-      operador: ""
+      tipo: a.descripcion || a.tipo || "", icaoTipo: a.tipo || "",
+      matricula: a.matricula || "", operador: "", pais: "", foto: ""
     } : null;
 
-    salida.push({
+    const av = {
       icao24: a.icao24,
       callsign: a.callsign || "",
       x: p.x, y: p.y,
@@ -358,12 +421,14 @@ function procesar(lista) {
       rumbo: a.rumbo || 0,
       subiendo: (a.vvPiesMin || 0) > 200,
       bajando: (a.vvPiesMin || 0) < -200,
+      vv: a.vvPiesMin || 0,
       nudos: a.velNudos || 0,
-      ficha: inline || fichas.get(a.icao24) || null,
+      ficha: fichas.get(a.icao24) || inline,
       ruta: rutas.get(a.callsign || "") || null
-    });
+    };
+    av.paso = calcularPaso(av);
+    salida.push(av);
 
-    // Estela: el registro impreso de por dónde ha pasado.
     if (!estelas.has(a.icao24)) estelas.set(a.icao24, []);
     const e = estelas.get(a.icao24);
     const ult = e[e.length - 1];
@@ -376,28 +441,57 @@ function procesar(lista) {
   return salida.sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
 
-// Con las fuentes nuevas casi nunca hace falta pedir la ficha:
-// el presupuesto se gasta sobre todo en rutas, que es lo único
-// que no viene con la posición.
 async function enriquecer(lista) {
   let presupuesto = CONFIG.maxFichasPorCiclo;
-
   for (const a of lista.slice(0, CONFIG.maxTiras)) {
     if (presupuesto <= 0) break;
-
-    if (!a.ficha) {
-      if (fichas.has(a.icao24)) a.ficha = fichas.get(a.icao24);
-      else { a.ficha = await pedirFicha(a.icao24); presupuesto--; }
-    }
-
-    if (a.callsign) {
-      if (rutas.has(a.callsign)) a.ruta = rutas.get(a.callsign);
-      else { a.ruta = await pedirRuta(a.callsign); presupuesto--; }
-    }
+    if (a.callsign && !rutas.has(a.callsign)) {
+      a.ruta = await pedirRuta(a.callsign);
+      presupuesto--;
+    } else if (a.callsign) a.ruta = rutas.get(a.callsign);
   }
 }
 
-// --- Dibujo del scope --------------------------------------
+// --- Avisos -------------------------------------------------
+
+function pitar() {
+  if (!sonido || !audio) return;
+  const o = audio.createOscillator(), g = audio.createGain();
+  o.type = "sine";
+  o.frequency.setValueAtTime(880, audio.currentTime);
+  g.gain.setValueAtTime(0.0001, audio.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.18, audio.currentTime + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.5);
+  o.connect(g); g.connect(audio.destination);
+  o.start(); o.stop(audio.currentTime + 0.52);
+}
+
+function revisarAlertas(lista) {
+  const candidato = lista.find(a =>
+    a.paso && !a.paso.alejandose &&
+    a.paso.km <= CONFIG.alertaKm &&
+    a.paso.minutos <= CONFIG.alertaMinutos);
+
+  if (!candidato) { $("alerta").innerHTML = ""; return; }
+
+  const etq = candidato.callsign || candidato.icao24.toUpperCase();
+  const min = candidato.paso.minutos;
+  const cuando = min < 1 ? "ahora mismo" : `en ${Math.round(min)} min`;
+
+  $("alerta").innerHTML =
+    `<div class="alerta">
+       <span class="grande">${escapar(etq)}</span>
+       <span class="chico">pasa a ${candidato.paso.km.toFixed(1)} km ${cuando}
+       · ${formatoAltitud(candidato.pies)}</span>
+     </div>`;
+
+  if (!avisados.has(candidato.icao24)) {
+    avisados.add(candidato.icao24);
+    pitar();
+  }
+}
+
+// --- Radar --------------------------------------------------
 
 const NS = "http://www.w3.org/2000/svg";
 const crear = (t, attrs) => {
@@ -407,7 +501,7 @@ const crear = (t, attrs) => {
 };
 
 // Densidad de tinta según altitud: lo bajo y cercano se imprime
-// oscuro, lo alto queda desvaído. Sin arcoíris.
+// oscuro, lo de crucero queda desvaído. Sin arcoíris.
 function tintaPorAltitud(pies) {
   if (pies < 5000) return "#1C1B18";
   if (pies < 20000) return "#4A4741";
@@ -417,114 +511,208 @@ function tintaPorAltitud(pies) {
 function dibujarScope(aviones) {
   const svg = $("scope");
   svg.innerHTML = "";
-  const cx = 200, cy = 200, R = 172;
+  const cx = 200, cy = 200, R = 168;
   const escala = R / CONFIG.radioKm;
-
-  // Anillos de distancia, grabados a línea fina.
   const paso = CONFIG.radioKm / 5;
+
   for (let i = 1; i <= 5; i++) {
     svg.appendChild(crear("circle", {
-      cx, cy, r: (paso * i) * escala,
-      fill: "none", stroke: "#B4AE9C",
+      cx, cy, r: paso * i * escala, fill: "none", stroke: "#B4AE9C",
       "stroke-width": i === 5 ? 1 : .5,
       "stroke-dasharray": i === 5 ? "none" : "2 3"
     }));
   }
   for (let i = 1; i <= 5; i += 2) {
-    const t = crear("text", {
-      x: cx + 3, y: cy - (paso * i) * escala - 3,
-      fill: "#8A8579", "font-size": 8, "font-family": "monospace"
-    });
+    const t = crear("text", { x: cx + 3, y: cy - paso * i * escala - 3,
+      fill: "#8A8579", "font-size": 8, "font-family": "monospace" });
     t.textContent = Math.round(paso * i) + " km";
     svg.appendChild(t);
   }
 
-  // Cruz de rumbos.
-  ["N","E","S","O"].forEach((r, i) => {
-    const a = i * 90 * Math.PI / 180;
+  // Rosa de los vientos grabada: marca cada 30°, texto cada 45°.
+  for (let g = 0; g < 360; g += 30) {
+    const a = g * Math.PI / 180;
+    const largo = g % 90 === 0 ? 13 : 6;
     svg.appendChild(crear("line", {
-      x1: cx + Math.sin(a) * (R - 14), y1: cy - Math.cos(a) * (R - 14),
-      x2: cx + Math.sin(a) * R,        y2: cy - Math.cos(a) * R,
-      stroke: "#8A8579", "stroke-width": 1
+      x1: cx + Math.sin(a) * (R - largo), y1: cy - Math.cos(a) * (R - largo),
+      x2: cx + Math.sin(a) * R, y2: cy - Math.cos(a) * R,
+      stroke: "#8A8579", "stroke-width": g % 90 === 0 ? 1 : .5
     }));
+  }
+  RUMBOS.forEach((r, i) => {
+    const a = i * 45 * Math.PI / 180;
     const t = crear("text", {
-      x: cx + Math.sin(a) * (R + 11), y: cy - Math.cos(a) * (R + 11) + 3,
-      fill: "#6B675C", "font-size": 10, "font-family": "monospace",
-      "text-anchor": "middle"
-    });
+      x: cx + Math.sin(a) * (R + 12), y: cy - Math.cos(a) * (R + 12) + 3,
+      fill: "#6B675C", "font-size": i % 2 ? 7.5 : 10,
+      "font-family": "monospace", "text-anchor": "middle" });
     t.textContent = r;
     svg.appendChild(t);
   });
 
-  // Estelas acumuladas: el dibujo del tráfico sobre el papel.
+  // Estelas: el registro impreso del tráfico sobre el papel.
   if (mostrarEstelas) {
     const activos = new Set(aviones.map(a => a.icao24));
     for (const [icao, pts] of estelas) {
       if (pts.length < 2) continue;
-      const d = pts.map((p, i) =>
-        (i ? "L" : "M") + (cx + p.x * escala).toFixed(1) + " " +
-        (cy - p.y * escala).toFixed(1)).join(" ");
-      svg.appendChild(crear("path", {
-        d, fill: "none", stroke: "#1C1B18",
+      const d = pts.map((p, i) => (i ? "L" : "M") +
+        (cx + p.x * escala).toFixed(1) + " " + (cy - p.y * escala).toFixed(1)).join(" ");
+      svg.appendChild(crear("path", { d, fill: "none", stroke: "#1C1B18",
         "stroke-width": activos.has(icao) ? .8 : .5,
         "stroke-opacity": activos.has(icao) ? .28 : .12,
-        "stroke-linecap": "round", "stroke-linejoin": "round"
-      }));
+        "stroke-linecap": "round", "stroke-linejoin": "round" }));
     }
   }
 
   // Marca de casa.
   svg.appendChild(crear("circle", { cx, cy, r: 3.5, fill: "none",
-                                    stroke: "#8C3A1E", "stroke-width": 1.2 }));
+    stroke: "#8C3A1E", "stroke-width": 1.2 }));
   svg.appendChild(crear("line", { x1: cx - 7, y1: cy, x2: cx + 7, y2: cy,
-                                  stroke: "#8C3A1E", "stroke-width": .8 }));
+    stroke: "#8C3A1E", "stroke-width": .8 }));
   svg.appendChild(crear("line", { x1: cx, y1: cy - 7, x2: cx, y2: cy + 7,
-                                  stroke: "#8C3A1E", "stroke-width": .8 }));
+    stroke: "#8C3A1E", "stroke-width": .8 }));
 
-  // Aeronaves.
   aviones.forEach((a, i) => {
-    const px = cx + a.x * escala;
-    const py = cy - a.y * escala;
+    const px = cx + a.x * escala, py = cy - a.y * escala;
     const esMarcado = a.icao24 === marcado;
     const color = esMarcado ? "#8C3A1E" : tintaPorAltitud(a.pies);
+    const rad = a.rumbo * Math.PI / 180;
 
-    const g = crear("g", { transform: `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${a.rumbo})` });
-    g.appendChild(crear("path", {
-      d: "M0 -6 L4 5 L0 2.5 L-4 5 Z",
-      fill: color, stroke: "none"
-    }));
+    // Vector de velocidad a un minuto vista, como en las pantallas
+    // de control real: de un vistazo ves quién viene hacia ti.
+    const kmMin = a.nudos * 1.852 / 60;
+    svg.appendChild(crear("line", {
+      x1: px, y1: py,
+      x2: px + Math.sin(rad) * kmMin * escala,
+      y2: py - Math.cos(rad) * kmMin * escala,
+      stroke: color, "stroke-width": .7, "stroke-opacity": .8 }));
+
+    const g = crear("g", {
+      transform: `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${a.rumbo})` });
+    g.appendChild(crear("path", { d: "M0 -6 L4 5 L0 2.5 L-4 5 Z", fill: color }));
     svg.appendChild(g);
 
-    // Solo etiquetamos los tres más cercanos: más que eso y el
-    // scope se convierte en una mancha ilegible.
     if (i < 3 || esMarcado) {
-      const et = crear("text", {
-        x: px + 8, y: py + 3,
-        fill: color, "font-size": 8.5, "font-family": "monospace",
-        "font-weight": esMarcado ? "700" : "400"
-      });
+      const et = crear("text", { x: px + 8, y: py + 3, fill: color,
+        "font-size": 8.5, "font-family": "monospace",
+        "font-weight": esMarcado ? "700" : "400" });
       et.textContent = a.callsign || a.icao24.toUpperCase();
       svg.appendChild(et);
     }
   });
 }
 
-// --- Tiras -------------------------------------------------
+// --- Gráfica de tráfico -------------------------------------
+
+function dibujarGrafica() {
+  const svg = $("grafica");
+  svg.innerHTML = "";
+  if (historial.length < 2) return;
+
+  const corte = Date.now() - CONFIG.minutosGrafica * 60000;
+  const pts = historial.filter(p => p.t >= corte);
+  if (pts.length < 2) return;
+
+  const max = Math.max(4, ...pts.map(p => p.n));
+  const t0 = pts[0].t, t1 = Date.now();
+  const ancho = 400, alto = 44;
+
+  const x = p => ((p.t - t0) / Math.max(1, t1 - t0)) * ancho;
+  const y = p => alto - 2 - (p.n / max) * (alto - 6);
+
+  // Relleno bajo la curva, como un registro en papel milimetrado.
+  const area = `M ${x(pts[0]).toFixed(1)} ${alto} ` +
+    pts.map(p => `L ${x(p).toFixed(1)} ${y(p).toFixed(1)}`).join(" ") +
+    ` L ${x(pts[pts.length - 1]).toFixed(1)} ${alto} Z`;
+  svg.appendChild(crear("path", { d: area, fill: "#1C1B18", "fill-opacity": .1 }));
+
+  svg.appendChild(crear("path", {
+    d: pts.map((p, i) => (i ? "L" : "M") + x(p).toFixed(1) + " " + y(p).toFixed(1)).join(" "),
+    fill: "none", stroke: "#1C1B18", "stroke-width": 1.2,
+    "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+  $("chispaMax").textContent = "máx " + max;
+}
+
+// --- Panel de detalle ---------------------------------------
+
+async function dibujarDetalle() {
+  const cont = $("detalle");
+  if (!marcado) { cont.innerHTML = ""; return; }
+
+  const a = ultimos.find(v => v.icao24 === marcado);
+  if (!a) { cont.innerHTML = ""; return; }
+
+  const f = a.ficha || {};
+  const r = a.ruta;
+  const paso = a.paso;
+
+  const textoPaso = !paso ? "—"
+    : paso.alejandose ? "alejándose"
+    : `${paso.km.toFixed(1)} km en ${paso.minutos < 1 ? "<1" : Math.round(paso.minutos)} min`;
+
+  cont.innerHTML = `
+    ${f.foto ? `<img class="foto" src="${escapar(f.foto)}" alt="">
+                <div class="credito">foto · planespotters.net</div>` : ""}
+    <div class="interior">
+      <button class="cerrar" id="btnCerrar">Cerrar</button>
+      <h2>${escapar(r && r.origen ? `${r.origen} → ${r.destino}`
+                                  : (a.callsign || a.icao24.toUpperCase()))}</h2>
+      <div class="sub">${escapar(
+        r && r.origenNombre ? `${r.origenNombre} · ${r.destinoNombre}`
+                            : (f.tipo || "identificando…"))}</div>
+      <div class="rejilla">
+        <div class="dato"><div class="k">Distancia</div>
+          <div class="v">${a.distanciaKm.toFixed(1)} km</div></div>
+        <div class="dato"><div class="k">Rumbo desde aquí</div>
+          <div class="v">${RUMBOS[octante(a.acimut)]} ${Math.round(a.acimut)}°</div></div>
+        <div class="dato"><div class="k">Altitud</div>
+          <div class="v">${formatoAltitud(a.pies)}</div></div>
+        <div class="dato"><div class="k">Velocidad</div>
+          <div class="v">${Math.round(a.nudos)} kt</div></div>
+        <div class="dato"><div class="k">Vertical</div>
+          <div class="v">${a.vv > 200 ? "+" : ""}${Math.round(a.vv)} ft/min</div></div>
+        <div class="dato"><div class="k">Paso más cercano</div>
+          <div class="v">${escapar(textoPaso)}</div></div>
+        <div class="dato"><div class="k">Matrícula</div>
+          <div class="v">${escapar(f.matricula || "—")}</div></div>
+        <div class="dato"><div class="k">Modelo</div>
+          <div class="v">${escapar(f.icaoTipo || "—")}</div></div>
+        ${f.operador ? `<div class="dato"><div class="k">Compañía</div>
+          <div class="v" style="font-size:12px">${escapar(f.operador)}</div></div>` : ""}
+      </div>
+    </div>`;
+
+  $("btnCerrar").addEventListener("click", () => { marcado = null; refrescarVista(); });
+
+  // La ficha completa (foto, compañía, país) se pide solo al abrir
+  // el detalle: así no se gastan peticiones en aviones que nadie
+  // llega a mirar.
+  if (!fichas.has(a.icao24)) {
+    const completa = await pedirFicha(a.icao24);
+    if (completa && marcado === a.icao24) {
+      a.ficha = { ...(a.ficha || {}), ...completa };
+      dibujarDetalle();
+    }
+  }
+}
+
+// --- Tiras --------------------------------------------------
 
 function textoRuta(a) {
   if (a.ruta && a.ruta.origen && a.ruta.destino) {
-    const lugares = [a.ruta.origenNombre, a.ruta.destinoNombre].filter(Boolean);
-    const sub = lugares.length === 2 ? `<span class="lugar">${lugares[0]} · ${lugares[1]}</span>` : "";
-    return `${a.ruta.origen} → ${a.ruta.destino}${sub}`;
+    const l = [a.ruta.origenNombre, a.ruta.destinoNombre].filter(Boolean);
+    const sub = l.length === 2
+      ? `<span class="lugar">${escapar(l[0])} · ${escapar(l[1])}</span>` : "";
+    return `${escapar(a.ruta.origen)} → ${escapar(a.ruta.destino)}${sub}`;
   }
-  if (a.ficha && a.ficha.operador) return a.ficha.operador;
-  return a.callsign || a.icao24.toUpperCase();
+  if (a.ficha && a.ficha.operador) return escapar(a.ficha.operador);
+  return escapar(a.callsign || a.icao24.toUpperCase());
 }
 
 function textoMaquina(a) {
   if (!a.ficha) return "identificando…";
-  return [a.ficha.tipo || a.ficha.icaoTipo, a.ficha.matricula, a.ficha.operador]
-    .filter(Boolean).join(" · ") || "sin ficha";
+  return escapar([a.ficha.tipo || a.ficha.icaoTipo, a.ficha.matricula, a.ficha.operador]
+    .filter(Boolean).join(" · ")) || "sin ficha";
 }
 
 function dibujarTiras(aviones) {
@@ -532,24 +720,32 @@ function dibujarTiras(aviones) {
   cont.innerHTML = "";
 
   if (!aviones.length) {
-    const detalle = Object.entries(aportes)
-      .map(([k, v]) => `${k}: ${v}`).join(" · ");
+    const detalle = Object.entries(aportes).map(([k, v]) => `${k}: ${v}`).join(" · ");
     cont.innerHTML = hayCobertura()
       ? `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo</div>`
       : `<div class="vacio">Ninguna red ve nada por aquí.<br>` +
         `Probablemente no hay receptores cerca, no que el cielo esté vacío.` +
-        `<br><br><span style="font-size:10px">${detalle}</span></div>`;
+        `<br><br><span style="font-size:10px">${escapar(detalle)}</span></div>`;
     return;
   }
 
   aviones.slice(0, CONFIG.maxTiras).forEach(a => {
     const tira = document.createElement("div");
+    const seAcerca = a.paso && !a.paso.alejandose &&
+                     a.paso.km <= CONFIG.alertaKm &&
+                     a.paso.minutos <= CONFIG.alertaMinutos;
+
     tira.className = "tira" + (a.pies < 5000 ? " baja" : "") +
+                     (seAcerca ? " encima" : "") +
                      (a.icao24 === marcado ? " marcada" : "");
     tira.tabIndex = 0;
     tira.setAttribute("role", "button");
 
     const tend = a.subiendo ? "↑" : a.bajando ? "↓" : "→";
+    const paso = a.paso && !a.paso.alejandose
+      ? `<span class="paso">↓ ${a.paso.km.toFixed(1)} km en ` +
+        `${a.paso.minutos < 1 ? "<1" : Math.round(a.paso.minutos)} min</span>`
+      : `<span style="opacity:.55">alejándose</span>`;
 
     tira.innerHTML = `
       <div class="canto"></div>
@@ -557,8 +753,8 @@ function dibujarTiras(aviones) {
         <div class="ruta">${textoRuta(a)}</div>
         <div class="maquina">${textoMaquina(a)}</div>
         <div class="telemetria">
-          ${a.callsign || "—"} &nbsp;·&nbsp; ${formatoAltitud(a.pies)} ${tend}
-          &nbsp;·&nbsp; ${Math.round(a.nudos)} kt
+          ${escapar(a.callsign || "—")} &nbsp;·&nbsp; ${formatoAltitud(a.pies)} ${tend}
+          &nbsp;·&nbsp; ${Math.round(a.nudos)} kt &nbsp;·&nbsp; ${paso}
         </div>
       </div>
       <div class="medida">
@@ -579,13 +775,20 @@ function dibujarTiras(aviones) {
   });
 }
 
-// --- Ciclo -------------------------------------------------
-
-let ultimos = [];
+// --- Ciclo --------------------------------------------------
 
 function refrescarVista() {
   dibujarScope(ultimos);
+  dibujarDetalle();
   dibujarTiras(ultimos);
+  dibujarGrafica();
+}
+
+function resumenVistos() {
+  const n = vistos.size;
+  const top = [...tipos.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([t, c]) => `${t}×${c}`).join(" ");
+  return n + " vistos" + (top ? " · " + top : "");
 }
 
 async function ciclo() {
@@ -594,33 +797,49 @@ async function ciclo() {
     const lista = procesar(await pedirAviones());
     await enriquecer(lista);
 
-    lista.forEach(a => vistos.set(a.icao24, a.callsign || a.icao24));
+    lista.forEach(a => {
+      vistos.set(a.icao24, a.callsign || a.icao24);
+      const t = a.ficha && a.ficha.icaoTipo;
+      if (t && !vistos.has(a.icao24 + ":t")) {
+        vistos.set(a.icao24 + ":t", 1);
+        tipos.set(t, (tipos.get(t) || 0) + 1);
+      }
+    });
+
     ultimos = lista;
+    historial.push({ t: Date.now(), n: lista.length });
+    if (historial.length > 400) historial.shift();
+
+    // Los avisados se limpian cuando el avión ya no está, para que
+    // el mismo vuelo no pite dos veces pero otro distinto sí pueda.
+    const presentes = new Set(lista.map(a => a.icao24));
+    avisados = new Set([...avisados].filter(i => presentes.has(i)));
 
     $("cuenta").textContent = hayCobertura()
-      ? lista.length + " en el aire · " + fuenteActual
-      : "sin cobertura";
-    $("vistos").textContent = vistos.size + " vistos en la sesión";
+      ? lista.length + " en el aire · " + fuenteActual : "sin cobertura";
+    $("vistos").textContent = resumenVistos();
     $("punto").classList.add("vivo");
     $("estado").textContent = new Date().toLocaleTimeString("es-ES",
       { hour: "2-digit", minute: "2-digit", second: "2-digit" });
     aviso("");
 
+    revisarAlertas(lista);
     refrescarVista();
+
   } catch (e) {
     console.error(e);
     $("punto").classList.remove("vivo");
     $("estado").textContent = "sin datos";
     aviso(CONFIG.proxy
-      ? `El Worker no ha devuelto datos: ${e.message}. Abre /diag para ver ` +
-        `qué fuentes están respondiendo.`
+      ? `El Worker no ha devuelto datos: ${escapar(e.message)}. Abre /diag ` +
+        `para ver qué fuentes responden.`
       : "Esta copia no tiene CONFIG.proxy relleno. Si ya lo rellenaste, el " +
-        "navegador está sirviendo una versión guardada en caché: recarga " +
-        "añadiendo ?v=" + VERSION + " al final de la URL.");
+        "navegador sirve una versión en caché: recarga añadiendo ?v=" +
+        VERSION + " al final de la URL.");
   }
 }
 
-// --- Controles ---------------------------------------------
+// --- Controles ----------------------------------------------
 
 $("radio").addEventListener("change", e => {
   CONFIG.radioKm = Number(e.target.value);
@@ -634,34 +853,41 @@ $("btnEstelas").addEventListener("click", e => {
   refrescarVista();
 });
 
-// Pantalla siempre encendida: convierte el móvil o un iPad viejo
-// en un panel de sobremesa.
+// El audio necesita un gesto del usuario para arrancar: iOS no deja
+// crear el contexto de otra forma.
+$("btnSonido").addEventListener("click", e => {
+  sonido = !sonido;
+  e.target.setAttribute("aria-pressed", String(sonido));
+  if (sonido && !audio) {
+    try { audio = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch (err) { sonido = false; e.target.disabled = true;
+                  e.target.textContent = "Sin audio"; return; }
+  }
+  if (sonido) pitar();
+});
+
 $("btnLuz").addEventListener("click", async e => {
   try {
     if (wakeLock) {
-      await wakeLock.release();
-      wakeLock = null;
+      await wakeLock.release(); wakeLock = null;
       e.target.setAttribute("aria-pressed", "false");
     } else {
       wakeLock = await navigator.wakeLock.request("screen");
       wakeLock.addEventListener("release", () => {
-        wakeLock = null;
-        e.target.setAttribute("aria-pressed", "false");
+        wakeLock = null; e.target.setAttribute("aria-pressed", "false");
       });
       e.target.setAttribute("aria-pressed", "true");
     }
   } catch (err) {
-    e.target.textContent = "No disponible aquí";
-    e.target.disabled = true;
+    e.target.textContent = "No disponible"; e.target.disabled = true;
   }
 });
 
-// Al volver a la app, refrescar inmediatamente en vez de esperar.
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") ciclo();
 });
 
-// --- Arranque ----------------------------------------------
+// --- Arranque -----------------------------------------------
 
 $("sitio").textContent = CONFIG.nombre;
 $("version").textContent = "v" + VERSION + " · " +
