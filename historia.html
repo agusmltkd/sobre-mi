@@ -25,7 +25,22 @@ body{
     radial-gradient(circle at 85% 80%,rgba(0,0,0,.02) 0 25%,transparent 55%);
   background-attachment:fixed;
 }
-.envoltura{max-width:640px;margin:0 auto;padding:0 16px 48px}
+.envoltura{max-width:640px;margin:0 auto;padding:0 14px 48px}
+.pestanas{display:flex;border-bottom:1px solid var(--regla);
+          position:sticky;top:0;z-index:11;background:var(--papel)}
+.pestanas a{flex:1;text-align:center;padding:12px 6px 10px;font-size:10px;
+            letter-spacing:.16em;text-transform:uppercase;color:var(--tenue);
+            text-decoration:none;border-bottom:2px solid transparent}
+.pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
+@media (max-width:520px){
+  .envoltura{padding:0 11px 48px}
+  h1{font-size:22px}
+  .marcadores{grid-template-columns:repeat(2,1fr)}
+  .barra{grid-template-columns:64px 1fr 30px;font-size:10px}
+  table{font-size:10px}
+  td,th{padding:5px 4px}
+  button{padding:8px 11px}
+}
 
 header{padding:14px 0 10px;border-bottom:1px solid var(--regla);margin-bottom:18px;
        display:flex;align-items:baseline;justify-content:space-between;gap:12px}
@@ -84,9 +99,14 @@ button.peligro:hover{border-color:var(--sello);color:var(--sello)}
 <body>
 <div class="envoltura">
 
+  <nav class="pestanas">
+    <a href="index.html">En vivo</a>
+    <a href="historia.html" class="activa">Historia</a>
+    <a href="modelos.html">Modelos</a>
+  </nav>
+
   <header>
     <h1>Historia</h1>
-    <a href="index.html">← En vivo</a>
   </header>
 
   <div class="fuente">
@@ -246,6 +266,58 @@ function alturas(registros) {
   return listaBarras(etiquetas.map((e, i) => [e, cubos[i]]));
 }
 
+// Aviones distintos por día: la curva que dice si la cobertura
+// mejora, si el registro se ha caído, o si hay estacionalidad.
+function porDia(registros) {
+  const dias = new Map();
+  for (const r of registros) dias.set(r.fecha, (dias.get(r.fecha) || 0) + 1);
+  const pts = [...dias.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  if (pts.length < 2) return null;
+
+  const max = Math.max(...pts.map(p => p[1]));
+  const svg = svgEl("svg", { viewBox: "0 0 400 110" });
+  const base = 92, alto = 78;
+  const x = i => (i / (pts.length - 1)) * 392 + 4;
+  const y = v => base - (v / max) * alto;
+
+  svg.appendChild(svgEl("path", {
+    d: `M ${x(0)} ${base} ` + pts.map((p, i) => `L ${x(i).toFixed(1)} ${y(p[1]).toFixed(1)}`)
+       .join(" ") + ` L ${x(pts.length - 1)} ${base} Z`,
+    fill: "#1C1B18", "fill-opacity": .1 }));
+  svg.appendChild(svgEl("path", {
+    d: pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" "),
+    fill: "none", stroke: "#1C1B18", "stroke-width": 1.3,
+    "stroke-linejoin": "round" }));
+  svg.appendChild(svgEl("line", { x1: 0, y1: base, x2: 400, y2: base,
+    stroke: "#B4AE9C", "stroke-width": 1 }));
+
+  [[0, "start"], [pts.length - 1, "end"]].forEach(([i, anc]) => {
+    const t = svgEl("text", { x: x(i), y: base + 14, fill: "#6B675C",
+      "font-size": 9, "font-family": "monospace", "text-anchor": anc });
+    t.textContent = pts[i][0].slice(5);
+    svg.appendChild(t);
+  });
+  const t = svgEl("text", { x: 4, y: 12, fill: "#6B675C", "font-size": 9,
+    "font-family": "monospace" });
+  t.textContent = "máx " + max;
+  svg.appendChild(t);
+  return svg;
+}
+
+// Reparto de distancias al paso más cercano. Con un receptor propio
+// esta curva se desplazaría entera hacia la izquierda.
+function distancias(registros) {
+  const cortes = [0, 2, 5, 10, 20, 35, 50, 1e9];
+  const etiquetas = ["<2 km", "2–5", "5–10", "10–20", "20–35", "35–50", ">50"];
+  const cubos = new Array(7).fill(0);
+  for (const r of registros) {
+    for (let i = 0; i < 7; i++) {
+      if (r.minKm >= cortes[i] && r.minKm < cortes[i + 1]) { cubos[i]++; break; }
+    }
+  }
+  return listaBarras(etiquetas.map((e, i) => [e, cubos[i]]));
+}
+
 function listaBarras(pares, limite) {
   const orden = [...pares].filter(p => p[1] > 0);
   if (limite) orden.sort((a, b) => b[1] - a[1]);
@@ -395,6 +467,10 @@ async function pintar() {
                              envolverLienzo(porHora(muestras))));
   }
 
+  const dia = porDia(registros);
+  if (dia) cont.appendChild(seccion("Aviones distintos por día", envolverLienzo(dia)));
+
+  cont.appendChild(seccion("A qué distancia pasan", distancias(registros)));
   cont.appendChild(seccion("Altitud al pasar más cerca", alturas(registros)));
   cont.appendChild(seccion("Modelos más vistos", listaBarras(cuenta(registros, "tipo"), 8)));
   cont.appendChild(seccion("Compañías", listaBarras(cuenta(registros, "operador"), 8)));

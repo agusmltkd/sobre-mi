@@ -44,7 +44,45 @@ body{
   background-attachment:fixed;
 }
 
-.envoltura{max-width:640px;margin:0 auto;padding:0 16px 40px}
+.envoltura{max-width:640px;margin:0 auto;padding:0 14px 44px}
+
+.pestanas{
+  display:flex;gap:0;border-bottom:1px solid var(--regla);
+  position:sticky;top:0;z-index:11;background:var(--papel);
+}
+.pestanas a{
+  flex:1;text-align:center;padding:12px 6px 10px;
+  font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--tenue);text-decoration:none;border-bottom:2px solid transparent;
+}
+.pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
+
+.sitios{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.sitios button{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  background:transparent;color:var(--tenue);border:1px solid var(--regla);
+  padding:5px 9px;cursor:pointer;
+}
+.sitios button[aria-pressed="true"]{border-color:var(--tinta);color:var(--tinta)}
+
+/* En pantalla estrecha manda el pulgar: menos adorno, más superficie
+   tocable y nada de texto diminuto en los controles. */
+@media (max-width:520px){
+  .envoltura{padding:0 11px 44px}
+  h1{font-size:22px}
+  header{padding:10px 0 8px;margin-bottom:11px}
+  .cuadro{padding:7px}
+  .ruta{font-size:17px}
+  .km{font-size:18px}
+  .maquina,.telemetria{font-size:10px}
+  .pie{gap:8px 10px}
+  .pie button,.pie select{padding:9px 11px;font-size:10px}
+  .sitios button{padding:8px 11px}
+  .tira{grid-template-columns:5px 1fr auto}
+  .cuerpo{padding:8px 9px}
+  .medida{padding:8px 9px 8px 0}
+  .detalle .rejilla{grid-template-columns:repeat(2,1fr)}
+}
 
 /* ---------- Cabecera ---------- */
 
@@ -233,6 +271,12 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 <body>
 <div class="envoltura">
 
+  <nav class="pestanas">
+    <a href="index.html" class="activa">En vivo</a>
+    <a href="historia.html">Historia</a>
+    <a href="modelos.html">Modelos</a>
+  </nav>
+
   <header>
     <div class="titulo-fila">
       <div>
@@ -243,6 +287,10 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
         <span class="punto" id="punto"></span>
         <span id="estado">iniciando</span>
       </div>
+    </div>
+    <div class="sitios">
+      <button id="bCasa" aria-pressed="true">Casa</button>
+      <button id="bAqui" aria-pressed="false">Dónde estoy</button>
     </div>
   </header>
 
@@ -273,8 +321,8 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
       <select id="radio">
         <option value="10">10 km</option>
         <option value="25">25 km</option>
-        <option value="50">50 km</option>
-        <option value="100" selected>100 km</option>
+        <option value="50" selected>50 km</option>
+        <option value="100">100 km</option>
         <option value="200">200 km</option>
       </select>
     </label>
@@ -306,7 +354,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "12";
+const VERSION = "13";
 
 const CONFIG = {
   lat: 37.402935,
@@ -318,7 +366,7 @@ const CONFIG = {
   radioConsultaKm: 150,
 
   // Radio que se MUESTRA. Solo cambia cómo se mira, no qué se recibe.
-  radioKm: 100,
+  radioKm: 50,
 
   // URL del Worker, sin barra final.
   proxy: "https://sobre-mi.mayoragustin01.workers.dev",
@@ -370,6 +418,11 @@ const CONFIG = {
   ]
 };
 
+// La casa nunca cambia: es la referencia del registro histórico y de
+// los avisos. La ubicación en vivo puede moverse, pero solo afecta a
+// lo que ves ahora; si no, las gráficas de meses mezclarían sitios.
+const CASA = { lat: 37.402935, lon: -5.957803, nombre: "Casa · Sevilla" };
+
 // --- Estado -------------------------------------------------
 
 let estelas = new Map();
@@ -392,6 +445,7 @@ let filtro = "todos";
 let mostrarGeo = true;
 let animando = false;
 let ultimoCuadro = 0;
+let sitio = "casa";
 let record = null;           // paso más cercano de la sesión
 
 // --- Utilidades ---------------------------------------------
@@ -875,7 +929,7 @@ function dibujarFondo() {
   });
 
   // Referencias en tierra: sin ellas el radar es un círculo abstracto.
-  if (mostrarGeo) {
+  if (mostrarGeo && sitio === "casa") {
     g.appendChild(crear("path", {
       d: trazo(CONFIG.geografia.rio.map(([la, lo]) => proyectar(la, lo)), 4),
       fill: "none", stroke: C.tinta, "stroke-width": 1.6, "stroke-opacity": .17,
@@ -897,7 +951,7 @@ function dibujarFondo() {
   // Aeropuertos: la pista y su eje de aproximación prolongado. Es lo
   // que convierte el radar en un mapa: de golpe entiendes por qué el
   // tráfico se ordena en dos hilos y no al azar.
-  for (const ae of CONFIG.aeropuertos) {
+  for (const ae of (sitio === "casa" ? CONFIG.aeropuertos : [])) {
     const pa = proyectar(ae.lat, ae.lon);
     for (const pista of ae.pistas) {
       const rad = pista.rumbo * Math.PI / 180;
@@ -1375,6 +1429,40 @@ $("btnImagen").addEventListener("click", () => {
 
   img.onerror = () => { URL.revokeObjectURL(url); alert("No se ha podido generar la imagen."); };
   img.src = url;
+});
+
+function marcarSitio() {
+  $("bCasa").setAttribute("aria-pressed", String(sitio === "casa"));
+  $("bAqui").setAttribute("aria-pressed", String(sitio === "aqui"));
+  marcarSitio();
+}
+
+function irA(lat, lon, nombre, cual) {
+  CONFIG.lat = lat; CONFIG.lon = lon; CONFIG.nombre = nombre;
+  sitio = cual;
+  estelas.clear(); alturas.clear(); marcado = null;
+  marcarSitio();
+  ciclo();
+}
+
+$("bCasa").addEventListener("click", () =>
+  irA(CASA.lat, CASA.lon, CASA.nombre, "casa"));
+
+$("bAqui").addEventListener("click", () => {
+  if (!navigator.geolocation) { aviso("Este navegador no da ubicación."); return; }
+  $("bAqui").textContent = "Buscando…";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      $("bAqui").textContent = "Dónde estoy";
+      irA(pos.coords.latitude, pos.coords.longitude,
+          `Aquí · ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`,
+          "aqui");
+    },
+    err => {
+      $("bAqui").textContent = "Dónde estoy";
+      aviso("No se ha podido obtener la ubicación: " + err.message);
+    },
+    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
 });
 
 $("btnEscala").addEventListener("click", e => {

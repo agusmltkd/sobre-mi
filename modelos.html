@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sobre mí · modelos</title>
+<meta name="theme-color" content="#E8E2D2">
+<link rel="apple-touch-icon" href="icono.png">
+<style>
+:root{
+  --papel:#E8E2D2; --papel-hondo:#DED6C3; --papel-marcado:#D4CBB5;
+  --tinta:#1C1B18; --tinta-media:#4A4741; --tenue:#6B675C;
+  --regla:#B4AE9C; --sello:#8C3A1E;
+  --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",var(--mono);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  background:var(--papel);color:var(--tinta);font-family:var(--mono);
+  font-size:14px;line-height:1.35;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-image:
+    radial-gradient(circle at 20% 15%,rgba(0,0,0,.025) 0 30%,transparent 60%),
+    radial-gradient(circle at 85% 80%,rgba(0,0,0,.02) 0 25%,transparent 55%);
+  background-attachment:fixed;
+}
+.envoltura{max-width:640px;margin:0 auto;padding:0 14px 44px}
+
+.pestanas{display:flex;border-bottom:1px solid var(--regla);
+          position:sticky;top:0;z-index:11;background:var(--papel)}
+.pestanas a{flex:1;text-align:center;padding:12px 6px 10px;font-size:10px;
+            letter-spacing:.16em;text-transform:uppercase;color:var(--tenue);
+            text-decoration:none;border-bottom:2px solid transparent}
+.pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
+
+header{padding:14px 0 10px;border-bottom:1px solid var(--regla);margin-bottom:14px}
+h1{font-family:var(--display);font-size:26px;font-weight:600;
+   letter-spacing:.06em;text-transform:uppercase;line-height:1}
+.sub{font-size:10px;color:var(--tenue);letter-spacing:.14em;
+     text-transform:uppercase;margin-top:4px}
+
+.fuente{display:flex;gap:8px;margin-bottom:16px}
+.fuente button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;background:transparent;color:var(--tenue);
+  border:1px solid var(--regla);padding:7px 11px;cursor:pointer}
+.fuente button[aria-pressed="true"]{background:var(--tinta);color:var(--papel);
+                                    border-color:var(--tinta)}
+
+.rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+.ficha{background:var(--papel-hondo);border:1px solid var(--regla);overflow:hidden;
+       display:flex;flex-direction:column}
+.ficha .marco{aspect-ratio:4/3;background:var(--papel-marcado);
+              display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ficha .marco img{width:100%;height:100%;object-fit:cover;display:block}
+.ficha .marco span{font-size:9px;color:var(--tenue);letter-spacing:.1em}
+.ficha .pie{padding:9px 10px}
+.ficha .cod{font-family:var(--display);font-size:20px;font-weight:600;
+            letter-spacing:.05em;color:var(--sello);line-height:1}
+.ficha .nom{font-size:10px;color:var(--tinta-media);margin-top:3px;
+            display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+            overflow:hidden}
+.ficha .dat{font-size:9px;color:var(--tenue);margin-top:6px;letter-spacing:.05em}
+
+.vacio{padding:36px 0;text-align:center;color:var(--tenue);font-size:12px}
+.nota{font-size:10px;color:var(--tenue);letter-spacing:.05em;margin-top:16px;
+      padding-top:12px;border-top:1px solid var(--regla)}
+
+@media (max-width:520px){
+  .envoltura{padding:0 11px 44px}
+  h1{font-size:22px}
+  .rejilla{grid-template-columns:repeat(2,1fr);gap:9px}
+  .ficha .cod{font-size:17px}
+}
+</style>
+</head>
+<body>
+<div class="envoltura">
+
+  <nav class="pestanas">
+    <a href="index.html">En vivo</a>
+    <a href="historia.html">Historia</a>
+    <a href="modelos.html" class="activa">Modelos</a>
+  </nav>
+
+  <header>
+    <h1>Modelos</h1>
+    <div class="sub" id="sub">—</div>
+  </header>
+
+  <div class="fuente">
+    <button id="bServidor" aria-pressed="true">Servidor</button>
+    <button id="bLocal" aria-pressed="false">Este navegador</button>
+  </div>
+
+  <div id="contenido"><div class="vacio">Cargando…</div></div>
+
+</div>
+
+<script>
+// ============================================================
+//  SOBRE MÍ · galería de modelos
+//
+//  Un cromo por cada tipo de avión que ha pasado por encima. La
+//  foto se pide a adsbdb usando un ejemplar concreto de ese modelo
+//  entre los que tú has visto: no es una foto de catálogo, es la de
+//  un avión que de verdad te ha sobrevolado.
+// ============================================================
+
+const PROXY = "https://sobre-mi.mayoragustin01.workers.dev";
+const BD_NOMBRE = "sobre-mi";
+let modo = "servidor";
+
+const $ = id => document.getElementById(id);
+const escapar = s => String(s == null ? "" : s)
+  .replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+// --- Origen de datos ----------------------------------------
+
+async function desdeServidor() {
+  const r = await fetch(PROXY + "/registro/modelos");
+  const j = await r.json();
+  if (j.error) throw new Error(j.error);
+  return j.map(m => ({
+    tipo: m.tipo, modelo: m.modelo || "", veces: m.veces,
+    masCerca: m.mas_cerca, ultima: m.ultima_vez, ejemplar: m.ejemplar
+  }));
+}
+
+function desdeLocal() {
+  return new Promise((res, rej) => {
+    const p = indexedDB.open(BD_NOMBRE, 1);
+    p.onsuccess = () => {
+      const bd = p.result;
+      if (!bd.objectStoreNames.contains("avistamientos")) return res([]);
+      const q = bd.transaction("avistamientos", "readonly")
+                  .objectStore("avistamientos").getAll();
+      q.onsuccess = () => {
+        const porTipo = new Map();
+        for (const r of q.result) {
+          if (!r.tipo) continue;
+          const a = porTipo.get(r.tipo) || {
+            tipo: r.tipo, modelo: r.modelo || "", veces: 0,
+            masCerca: Infinity, ultima: "", ejemplar: r.icao24
+          };
+          a.veces++;
+          if (r.minKm < a.masCerca) { a.masCerca = r.minKm; a.ejemplar = r.icao24; }
+          if (r.fecha > a.ultima) a.ultima = r.fecha;
+          if (!a.modelo && r.modelo) a.modelo = r.modelo;
+          porTipo.set(r.tipo, a);
+        }
+        res([...porTipo.values()].sort((x, y) => y.veces - x.veces));
+      };
+      q.onerror = () => rej(q.error);
+    };
+    p.onerror = () => rej(p.error);
+  });
+}
+
+// --- Fotos ---------------------------------------------------
+
+// Se piden de una en una y con pausa: adsbdb es gratis y sin clave,
+// así que lo mínimo es no martillearlo.
+async function ponerFotos(modelos) {
+  for (const m of modelos) {
+    if (!m.ejemplar) continue;
+    try {
+      const r = await fetch(`${PROXY}/aircraft/${m.ejemplar}`);
+      const j = await r.json();
+      const a = j.response && j.response.aircraft;
+      const marco = $("m-" + m.tipo);
+      if (!marco) continue;
+
+      if (a && (a.url_photo_thumbnail || a.url_photo)) {
+        const img = new Image();
+        img.alt = m.tipo;
+        img.loading = "lazy";
+        img.src = a.url_photo_thumbnail || a.url_photo;
+        img.onload = () => { marco.innerHTML = ""; marco.appendChild(img); };
+      } else if (a && a.type) {
+        const nom = document.querySelector("#f-" + m.tipo + " .nom");
+        if (nom && !nom.textContent.trim()) nom.textContent = a.type;
+        marco.innerHTML = "<span>sin foto</span>";
+      } else {
+        marco.innerHTML = "<span>sin ficha</span>";
+      }
+    } catch (e) { /* uno menos, no pasa nada */ }
+    await new Promise(r => setTimeout(r, 180));
+  }
+}
+
+// --- Pintado -------------------------------------------------
+
+async function pintar() {
+  const cont = $("contenido");
+  cont.innerHTML = `<div class="vacio">Cargando…</div>`;
+
+  let modelos;
+  try {
+    modelos = modo === "servidor" ? await desdeServidor() : await desdeLocal();
+  } catch (e) {
+    cont.innerHTML = `<div class="vacio">No se ha podido leer el registro.<br>` +
+                     `${escapar(e.message || e)}</div>`;
+    return;
+  }
+
+  if (!modelos.length) {
+    cont.innerHTML = `<div class="vacio">Todavía no hay ningún modelo registrado.<br><br>` +
+      `Los cromos van saliendo solos según pasan aviones.</div>`;
+    $("sub").textContent = "0 modelos";
+    return;
+  }
+
+  $("sub").textContent = modelos.length + " modelos distintos";
+
+  cont.innerHTML = `<div class="rejilla">` + modelos.map(m => `
+    <div class="ficha" id="f-${escapar(m.tipo)}">
+      <div class="marco" id="m-${escapar(m.tipo)}"><span>buscando…</span></div>
+      <div class="pie">
+        <div class="cod">${escapar(m.tipo)}</div>
+        <div class="nom">${escapar(m.modelo || "")}</div>
+        <div class="dat">${m.veces} ${m.veces === 1 ? "vez" : "veces"}` +
+        (Number.isFinite(m.masCerca) ? ` · ${m.masCerca.toFixed(1)} km` : "") + `</div>
+      </div>
+    </div>`).join("") + `</div>
+    <div class="nota">Las fotos son de planespotters.net, del ejemplar concreto
+    que te ha pasado más cerca de cada modelo.</div>`;
+
+  ponerFotos(modelos);
+}
+
+function cambiar(nuevo) {
+  modo = nuevo;
+  $("bServidor").setAttribute("aria-pressed", String(nuevo === "servidor"));
+  $("bLocal").setAttribute("aria-pressed", String(nuevo === "local"));
+  pintar();
+}
+$("bServidor").addEventListener("click", () => cambiar("servidor"));
+$("bLocal").addEventListener("click", () => cambiar("local"));
+
+pintar();
+</script>
+</body>
+</html>
