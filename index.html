@@ -287,6 +287,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
         <option value="nuevos">Nunca vistos</option>
       </select>
     </label>
+    <button id="btnEscala" aria-pressed="true">Zoom central</button>
     <button id="btnGeo" aria-pressed="true">Mapa</button>
     <button id="btnTema" aria-pressed="false">Noche</button>
     <button id="btnImagen">Guardar imagen</button>
@@ -305,12 +306,18 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "10";
+const VERSION = "12";
 
 const CONFIG = {
   lat: 37.402935,
   lon: -5.957803,
   nombre: "Sevilla · 37.4029 N, 5.9578 O",
+  // Radio que se PIDE al Worker. Siempre amplio: así nunca se pierde
+  // nada por haber mirado poco, y cambiar el zoom no cuesta una
+  // consulta nueva.
+  radioConsultaKm: 150,
+
+  // Radio que se MUESTRA. Solo cambia cómo se mira, no qué se recibe.
   radioKm: 100,
 
   // URL del Worker, sin barra final.
@@ -559,7 +566,8 @@ function registrar(lista) {
 async function pedirAviones() {
   if (!CONFIG.proxy) throw new Error("falta CONFIG.proxy");
   const res = await fetch(
-    `${CONFIG.proxy}/aviones?lat=${CONFIG.lat}&lon=${CONFIG.lon}&km=${CONFIG.radioKm}`);
+    `${CONFIG.proxy}/aviones?lat=${CONFIG.lat}&lon=${CONFIG.lon}` +
+    `&km=${CONFIG.radioConsultaKm}`);
   const j = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
   fuenteActual = j.fuente || "";
@@ -619,7 +627,7 @@ function procesar(lista) {
 
     const p = proyectar(a.lat, a.lon);
     const d = distancia(p);
-    if (d > CONFIG.radioKm) continue;
+    if (d > CONFIG.radioConsultaKm) continue;
 
     // Las fuentes readsb traen tipo y matrícula con la posición, así
     // que la ficha básica ya viene hecha; solo la foto y el operador
@@ -784,26 +792,68 @@ const capa = id => {
 };
 
 const CX = 200, CY = 200, RAD = 168;
-const escalaActual = () => RAD / CONFIG.radioKm;
+let escalaRaiz = true;
+
+// Escala radial. En lineal, los primeros 25 km de un radar de 100
+// ocupan solo un cuarto del dibujo y todo lo cercano se apelotona en
+// el centro. Con raíz cuadrada esos mismos 25 km ocupan la mitad:
+// se gana detalle cerca sin dejar de ver lo lejano.
+function radioPantalla(km) {
+  const f = Math.min(1, Math.max(0, km / CONFIG.radioKm));
+  return (escalaRaiz ? Math.sqrt(f) : f) * RAD;
+}
+
+// Lleva un punto en kilómetros locales a coordenadas del dibujo.
+function aPantalla(x, y) {
+  const d = Math.hypot(x, y);
+  if (d < 1e-9) return { x: CX, y: CY };
+  const r = radioPantalla(d);
+  return { x: CX + (x / d) * r, y: CY - (y / d) * r };
+}
+
+// Con escala no lineal una recta deja de serlo, así que las líneas
+// largas (pista, ejes, río) se subdividen antes de transformarlas.
+function trazo(puntos, subdiv = 1) {
+  const salida = [];
+  for (let i = 0; i < puntos.length - 1; i++) {
+    const a = puntos[i], b = puntos[i + 1];
+    for (let k = 0; k < subdiv; k++) {
+      const t = k / subdiv;
+      salida.push(aPantalla(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t));
+    }
+  }
+  salida.push(aPantalla(puntos[puntos.length - 1].x, puntos[puntos.length - 1].y));
+  return salida.map((p, i) => (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" ");
+}
+
+// Anillos en valores redondos, no en fracciones del radio: leer
+// "10 km" dice más que leer "un quinto de lo que has elegido".
+function anillos() {
+  const r = CONFIG.radioKm;
+  if (r <= 30) return [5, 10, 20, 30];
+  if (r <= 60) return [10, 25, 50, 60];
+  if (r <= 120) return [10, 25, 50, 100];
+  return [25, 50, 100, 200];
+}
 
 function dibujarFondo() {
   const C = colores();
   const g = capa("fondo");
-  const e = escalaActual();
-  const paso = CONFIG.radioKm / 5;
 
-  for (let i = 1; i <= 5; i++) {
+  for (const km of anillos()) {
+    if (km > CONFIG.radioKm) continue;
+    const r = radioPantalla(km);
     g.appendChild(crear("circle", {
-      cx: CX, cy: CY, r: paso * i * e, fill: "none", stroke: C.regla,
-      "stroke-width": i === 5 ? 1 : .5,
-      "stroke-dasharray": i === 5 ? "none" : "2 3" }));
-  }
-  for (let i = 1; i <= 5; i += 2) {
-    const t = crear("text", { x: CX + 3, y: CY - paso * i * e - 3,
+      cx: CX, cy: CY, r, fill: "none", stroke: C.regla,
+      "stroke-width": km === CONFIG.radioKm ? 1 : .5,
+      "stroke-dasharray": km === CONFIG.radioKm ? "none" : "2 3" }));
+    const t = crear("text", { x: CX + 3, y: CY - r - 3,
       fill: C.tenue, "font-size": 8, "font-family": "monospace" });
-    t.textContent = Math.round(paso * i) + " km";
+    t.textContent = km + " km";
     g.appendChild(t);
   }
+  g.appendChild(crear("circle", { cx: CX, cy: CY, r: RAD, fill: "none",
+    stroke: C.regla, "stroke-width": 1 }));
 
   // Rosa de los vientos grabada: marca cada 30°, texto cada 45°.
   for (let d = 0; d < 360; d += 30) {
@@ -826,20 +876,15 @@ function dibujarFondo() {
 
   // Referencias en tierra: sin ellas el radar es un círculo abstracto.
   if (mostrarGeo) {
-    const pt = (lat, lon) => {
-      const p = proyectar(lat, lon);
-      return { x: CX + p.x * e, y: CY - p.y * e };
-    };
-
-    const rio = CONFIG.geografia.rio.map(([la, lo]) => pt(la, lo));
     g.appendChild(crear("path", {
-      d: rio.map((p, i) => (i ? "L" : "M") + p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" "),
+      d: trazo(CONFIG.geografia.rio.map(([la, lo]) => proyectar(la, lo)), 4),
       fill: "none", stroke: C.tinta, "stroke-width": 1.6, "stroke-opacity": .17,
       "stroke-linejoin": "round", "stroke-linecap": "round" }));
 
     for (const [nom, la, lo] of CONFIG.geografia.puntos) {
-      const p = pt(la, lo);
-      if (Math.hypot(p.x - CX, p.y - CY) > RAD - 4) continue;
+      const q = proyectar(la, lo);
+      if (Math.hypot(q.x, q.y) > CONFIG.radioKm) continue;
+      const p = aPantalla(q.x, q.y);
       g.appendChild(crear("circle", { cx: p.x, cy: p.y, r: 1.6,
         fill: C.tenue, "fill-opacity": .65 }));
       const t = crear("text", { x: p.x + 4, y: p.y + 3, fill: C.tenue,
@@ -858,19 +903,20 @@ function dibujarFondo() {
       const rad = pista.rumbo * Math.PI / 180;
       const ux = Math.sin(rad), uy = Math.cos(rad);
       const mitad = pista.largoKm / 2;
-      const punto = k => ({ x: CX + (pa.x + ux * k) * e, y: CY - (pa.y + uy * k) * e });
+      const enKm = k => ({ x: pa.x + ux * k, y: pa.y + uy * k });
 
       for (const signo of [1, -1]) {
-        const a = punto(signo * mitad), b = punto(signo * (mitad + ae.ejeKm));
-        g.appendChild(crear("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y,
-          stroke: C.sello, "stroke-width": .6, "stroke-opacity": .38,
+        g.appendChild(crear("path", {
+          d: trazo([enKm(signo * mitad), enKm(signo * (mitad + ae.ejeKm))], 10),
+          fill: "none", stroke: C.sello, "stroke-width": .6, "stroke-opacity": .38,
           "stroke-dasharray": "5 4" }));
       }
-      const p1 = punto(-mitad), p2 = punto(mitad);
-      g.appendChild(crear("line", { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
-        stroke: C.tinta, "stroke-width": 3.2, "stroke-linecap": "butt" }));
+      g.appendChild(crear("path", {
+        d: trazo([enKm(-mitad), enKm(mitad)], 4),
+        fill: "none", stroke: C.tinta, "stroke-width": 3.2, "stroke-linecap": "butt" }));
     }
-    const et = crear("text", { x: CX + pa.x * e, y: CY - pa.y * e - 8,
+    const etp = aPantalla(pa.x, pa.y);
+    const et = crear("text", { x: etp.x, y: etp.y - 8,
       fill: C.sello, "font-size": 9, "font-family": "monospace",
       "font-weight": "700", "text-anchor": "middle" });
     et.textContent = ae.codigo;
@@ -889,14 +935,13 @@ function dibujarFondo() {
 function dibujarEstelas(aviones) {
   const g = capa("estelas");
   if (!mostrarEstelas) return;
-  const C = colores(), e = escalaActual();
+  const C = colores();
   const activos = new Set(aviones.map(a => a.icao24));
 
   for (const [icao, pts] of estelas) {
     if (pts.length < 2) continue;
     g.appendChild(crear("path", {
-      d: pts.map((p, i) => (i ? "L" : "M") + (CX + p.x * e).toFixed(1) + " " +
-                           (CY - p.y * e).toFixed(1)).join(" "),
+      d: trazo(pts, 2),
       fill: "none", stroke: C.tinta,
       "stroke-width": activos.has(icao) ? .8 : .5,
       "stroke-opacity": activos.has(icao) ? .28 : .12,
@@ -918,11 +963,14 @@ function posicionAhora(a) {
 
 function dibujarTrafico() {
   const g = capa("trafico");
-  const C = colores(), e = escalaActual();
+  const C = colores();
+  let fuera = 0;
 
   ultimos.forEach((a, i) => {
     const pos = posicionAhora(a);
-    const px = CX + pos.x * e, py = CY - pos.y * e;
+    if (Math.hypot(pos.x, pos.y) > CONFIG.radioKm) { fuera++; return; }
+    const p = aPantalla(pos.x, pos.y);
+    const px = p.x, py = p.y;
     const esMarcado = a.icao24 === marcado;
     const color = esMarcado ? C.sello
       : a.emergencia ? C.sello : tintaPorAltitud(a.pies, C);
@@ -931,10 +979,10 @@ function dibujarTrafico() {
     // Vector de velocidad a un minuto vista, como en las pantallas de
     // control real: de un vistazo ves quién viene hacia ti.
     const kmMin = a.nudos * 1.852 / 60;
+    const punta = aPantalla(pos.x + Math.sin(rad) * kmMin,
+                            pos.y + Math.cos(rad) * kmMin);
     g.appendChild(crear("line", {
-      x1: px, y1: py,
-      x2: px + Math.sin(rad) * kmMin * e,
-      y2: py - Math.cos(rad) * kmMin * e,
+      x1: px, y1: py, x2: punta.x, y2: punta.y,
       stroke: color, "stroke-width": .7, "stroke-opacity": .8 }));
 
     const nodo = crear("g", {
@@ -955,6 +1003,14 @@ function dibujarTrafico() {
       g.appendChild(et);
     }
   });
+
+  if (fuera) {
+    const C2 = colores();
+    const t = crear("text", { x: CX, y: 393, fill: C2.tenue, "font-size": 8,
+      "font-family": "monospace", "text-anchor": "middle" });
+    t.textContent = `${fuera} más allá de ${CONFIG.radioKm} km`;
+    g.appendChild(t);
+  }
 }
 
 // Bucle de interpolación. A 15 cuadros por segundo el movimiento ya
@@ -1193,6 +1249,7 @@ function dibujarTiras(aviones) {
 // El radar siempre enseña todo; el filtro solo afecta a la lista,
 // que es donde la saturación estorba de verdad.
 function filtrar(lista) {
+  lista = lista.filter(a => a.distanciaKm <= CONFIG.radioKm);
   switch (filtro) {
     case "bajos": return lista.filter(a => a.pies < 10000);
     case "acercandose": return lista.filter(a => a.paso && !a.paso.alejandose);
@@ -1269,10 +1326,11 @@ async function ciclo() {
 
 // --- Controles ----------------------------------------------
 
+// Cambiar el radio ya no pide datos otra vez: la consulta siempre
+// es amplia y esto solo decide hasta dónde se mira.
 $("radio").addEventListener("change", e => {
   CONFIG.radioKm = Number(e.target.value);
-  estelas.clear();
-  ciclo();
+  refrescarVista();
 });
 
 $("filtro").addEventListener("change", e => {
@@ -1317,6 +1375,12 @@ $("btnImagen").addEventListener("click", () => {
 
   img.onerror = () => { URL.revokeObjectURL(url); alert("No se ha podido generar la imagen."); };
   img.src = url;
+});
+
+$("btnEscala").addEventListener("click", e => {
+  escalaRaiz = !escalaRaiz;
+  e.target.setAttribute("aria-pressed", String(escalaRaiz));
+  refrescarVista();
 });
 
 $("btnGeo").addEventListener("click", e => {
@@ -1382,8 +1446,9 @@ document.addEventListener("visibilitychange", () => {
 
 // --- Arranque -----------------------------------------------
 
-// Arranca en noche si el sistema lo pide; el botón manda por encima.
-aplicarTema(window.matchMedia("(prefers-color-scheme: dark)").matches);
+// Arranca siempre de día. El modo noche queda a un toque, pero no se
+// hereda del sistema: esta app se mira sobre todo con luz.
+aplicarTema(false);
 animar(true);
 
 $("sitio").textContent = CONFIG.nombre;
