@@ -189,6 +189,16 @@ html[data-quiosco] .expandir{display:none}
 .tira:focus-visible{outline:2px solid var(--sello);outline-offset:2px}
 .tira.marcada{background:var(--papel-marcado);border-color:var(--tinta)}
 .canto{background:var(--tinta)}
+/* La miniatura convierte una lista de códigos en una lista de
+   aviones. Ocupa poco y cambia por completo cómo se lee. */
+.tira.con-foto{grid-template-columns:6px 62px 1fr auto}
+.mini{width:62px;align-self:stretch;background:var(--papel-marcado);
+      overflow:hidden;display:flex;align-items:center;justify-content:center}
+.mini img{width:100%;height:100%;object-fit:cover;display:block}
+@media (max-width:520px){
+  .tira.con-foto{grid-template-columns:5px 52px 1fr auto}
+  .mini{width:52px}
+}
 .tira.baja .canto{background:var(--sello)}
 .tira.encima .canto{background:repeating-linear-gradient(
   180deg,var(--sello) 0 4px,var(--papel-hondo) 4px 8px)}
@@ -429,6 +439,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
         <option value="nuevos">Nunca vistos</option>
       </select>
     </label>
+    <button id="btnFotos" aria-pressed="true">Fotos</button>
     <button id="btnEscala" aria-pressed="true">Zoom central</button>
     <button id="btnGeo" aria-pressed="true">Mapa</button>
     <button id="btnTema" aria-pressed="false">Noche</button>
@@ -449,7 +460,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "17";
+const VERSION = "18";
 
 const CONFIG = {
   lat: 37.402935,
@@ -574,6 +585,7 @@ let mostrarGeo = true;
 let animando = false;
 let ultimoCuadro = 0;
 let sitio = "casa";
+let mostrarFotos = true;
 let record = null;           // paso más cercano de la sesión
 
 // --- Utilidades ---------------------------------------------
@@ -1298,6 +1310,8 @@ async function dibujarDetalle() {
          referrerpolicy="no-referrer" onerror="this.remove()">
     <div class="interior">
       <button class="cerrar" id="btnCerrar">Cerrar</button>
+      <a class="cerrar" style="margin-right:7px;text-decoration:none"
+         href="avion.html?q=${escapar(f.matricula || a.icao24)}">Ficha ↗</a>
       <h2>${escapar(r && r.origen ? `${r.origen} → ${r.destino}`
                                   : (a.callsign || a.icao24.toUpperCase()))}</h2>
       <div class="sub">${escapar(
@@ -1419,7 +1433,8 @@ function dibujarTiras(aviones) {
                      a.paso.km <= CONFIG.alertaKm &&
                      a.paso.minutos <= CONFIG.alertaMinutos;
 
-    tira.className = "tira" + (a.pies < 5000 ? " baja" : "") +
+    tira.className = "tira" + (mostrarFotos ? " con-foto" : "") +
+                     (a.pies < 5000 ? " baja" : "") +
                      (seAcerca ? " encima" : "") +
                      (a.icao24 === marcado ? " marcada" : "");
     tira.tabIndex = 0;
@@ -1433,6 +1448,10 @@ function dibujarTiras(aviones) {
 
     tira.innerHTML = `
       <div class="canto"></div>
+      ${mostrarFotos ? `<div class="mini"><img loading="lazy"
+        referrerpolicy="no-referrer" alt=""
+        src="${CONFIG.proxy}/foto/${escapar(a.icao24)}"
+        onerror="this.parentNode.innerHTML=''"></div>` : ""}
       <div class="cuerpo">
         <div class="ruta">${textoRuta(a)}${marcas(a)}</div>
         <div class="maquina">${textoMaquina(a)}</div>
@@ -1750,6 +1769,12 @@ document.addEventListener("keydown", e => {
 // Se puede entrar directamente con ?quiosco al final de la URL, que
 // es lo cómodo para dejarlo fijo en un dispositivo de sobremesa.
 if (new URLSearchParams(location.search).has("quiosco")) quiosco(true);
+
+$("btnFotos").addEventListener("click", e => {
+  mostrarFotos = !mostrarFotos;
+  e.target.setAttribute("aria-pressed", String(mostrarFotos));
+  refrescarVista();
+});
 
 $("btnEscala").addEventListener("click", e => {
   escalaRaiz = !escalaRaiz;

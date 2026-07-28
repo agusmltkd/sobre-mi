@@ -46,17 +46,29 @@ h1{font-family:var(--display);font-size:26px;font-weight:600;
   border:1px solid var(--regla);padding:7px 11px;cursor:pointer}
 .fuente button[aria-pressed="true"]{background:var(--tinta);color:var(--papel);
                                     border-color:var(--tinta)}
+.fuente select{margin-left:auto;font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;background:transparent;
+  color:var(--tenue);border:1px solid var(--regla);padding:7px 9px}
 
 .rejilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
 .ficha{background:var(--papel-hondo);border:1px solid var(--regla);overflow:hidden;
        display:flex;flex-direction:column}
-.ficha .marco{aspect-ratio:4/3;background:var(--papel-marcado);
+.ficha .marco{aspect-ratio:3/2;background:var(--papel-marcado);
               display:flex;align-items:center;justify-content:center;overflow:hidden}
 .ficha .marco img{width:100%;height:100%;object-fit:cover;display:block}
 .ficha .marco span{font-size:9px;color:var(--tenue);letter-spacing:.1em}
 .ficha .pie{padding:9px 10px}
-.ficha .cod{font-family:var(--display);font-size:20px;font-weight:600;
+.ficha{position:relative;transition:transform .12s ease}
+.ficha:hover{transform:translateY(-2px)}
+.ficha .cod{font-family:var(--display);font-size:22px;font-weight:600;
             letter-spacing:.05em;color:var(--sello);line-height:1}
+/* Sello con el número de avistamientos, como en un álbum de cromos. */
+.ficha .sello{
+  position:absolute;top:7px;right:7px;
+  font-size:9px;letter-spacing:.08em;
+  background:var(--papel);color:var(--tinta);
+  border:1px solid var(--tinta);padding:2px 6px;
+}
 .ficha .nom{font-size:10px;color:var(--tinta-media);margin-top:3px;
             display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
             overflow:hidden}
@@ -93,6 +105,12 @@ h1{font-family:var(--display);font-size:26px;font-weight:600;
   <div class="fuente">
     <button id="bServidor" aria-pressed="true">Servidor</button>
     <button id="bLocal" aria-pressed="false">Este navegador</button>
+    <select id="orden">
+      <option value="veces">Más vistos</option>
+      <option value="cerca">Más cercanos</option>
+      <option value="raros">Más raros</option>
+      <option value="alfa">Alfabético</option>
+    </select>
   </div>
 
   <div id="contenido"><div class="vacio">Cargando…</div></div>
@@ -188,7 +206,11 @@ function cargarFoto(m) {
     };
     img.onerror = () => { clearTimeout(corte); fallo("sin foto"); };
 
-    img.src = `${PROXY}/foto/${m.ejemplar}`;
+    // Por tipo, no por ejemplar: si el avión concreto no está
+    // fotografiado, el Worker prueba con otros del mismo modelo.
+    img.src = modo === "servidor"
+      ? `${PROXY}/foto-tipo/${encodeURIComponent(m.tipo)}`
+      : `${PROXY}/foto/${m.ejemplar}`;
   });
 }
 
@@ -223,11 +245,18 @@ async function pintar() {
     return;
   }
 
+  const orden = $("orden").value;
+  if (orden === "cerca") modelos.sort((a, b) => (a.masCerca ?? 9e9) - (b.masCerca ?? 9e9));
+  else if (orden === "raros") modelos.sort((a, b) => a.veces - b.veces);
+  else if (orden === "alfa") modelos.sort((a, b) => a.tipo < b.tipo ? -1 : 1);
+  else modelos.sort((a, b) => b.veces - a.veces);
+
   $("sub").textContent = modelos.length + " modelos distintos";
 
   cont.innerHTML = `<div class="rejilla">` + modelos.map(m => `
     <div class="ficha" id="f-${escapar(m.tipo)}">
       <div class="marco" id="m-${escapar(m.tipo)}"><span>buscando…</span></div>
+      <span class="sello">${m.veces}</span>
       <div class="pie">
         <div class="cod">${escapar(m.tipo)}</div>
         <div class="nom">${escapar(m.modelo || "")}</div>
@@ -247,6 +276,7 @@ function cambiar(nuevo) {
   $("bLocal").setAttribute("aria-pressed", String(nuevo === "local"));
   pintar();
 }
+$("orden").addEventListener("change", pintar);
 $("bServidor").addEventListener("click", () => cambiar("servidor"));
 $("bLocal").addEventListener("click", () => cambiar("local"));
 
