@@ -526,6 +526,9 @@ async function pintar() {
   const ctr = document.createElement("div");
   ctr.className = "controles";
   ctr.innerHTML = `<button id="csv">Exportar CSV</button>` +
+    (modo === "servidor"
+      ? `<a href="${PROXY}/registro/kml?dias=365" style="text-decoration:none">
+           <button>Google Earth (KML)</button></a>` : "") +
     (bd ? `<button id="borrar" class="peligro">Borrar registro local</button>` : "");
   cont.appendChild(ctr);
 

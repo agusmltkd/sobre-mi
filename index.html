@@ -268,6 +268,30 @@ html[data-quiosco] .expandir{display:none}
   outline:2px solid var(--sello);outline-offset:2px}
 .vacio{padding:26px 0;text-align:center;color:var(--tenue);font-size:12px}
 
+/* ---------- Panel de frecuencias ---------- */
+#torre{display:none}
+#torre.visible{
+  display:block;position:fixed;inset:auto 0 0 0;z-index:26;
+  background:var(--papel);border-top:1px solid var(--tinta);
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+  max-height:80vh;overflow:auto;
+}
+#torre .caja{max-width:640px;margin:0 auto}
+#torre h3{font-family:var(--display);font-size:20px;font-weight:600;
+  letter-spacing:.05em;text-transform:uppercase;color:var(--sello)}
+#torre p{font-size:11px;color:var(--tenue);margin-top:7px;line-height:1.5}
+#torre ul{list-style:none;margin-top:13px;display:flex;flex-direction:column;gap:7px}
+#torre a.feed{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;
+  background:var(--papel-hondo);border:1px solid var(--regla);
+  padding:11px 13px;text-decoration:none;color:var(--tinta);font-size:12px;
+}
+#torre a.feed span{font-size:9px;color:var(--tenue);letter-spacing:.1em;
+  text-transform:uppercase}
+#torre .cerrarT{margin-top:14px;width:100%;font-family:var(--mono);font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;background:transparent;
+  color:var(--tenue);border:1px solid var(--regla);padding:10px;cursor:pointer}
+
 /* ---------- Modo espectador ----------
    Solo en quiosco: cuando nadie toca nada, va pasando cromos de los
    aviones más interesantes. Un salvapantallas con datos. */
@@ -397,6 +421,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
   <button id="salirQuiosco">Salir</button>
   <div id="espectador"></div>
+  <div id="torre"></div>
   <div id="alerta"></div>
   <div id="aviso"></div>
 
@@ -439,11 +464,13 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
         <option value="nuevos">Nunca vistos</option>
       </select>
     </label>
+    <button id="btnTorre">Escuchar torre</button>
     <button id="btnFotos" aria-pressed="true">Fotos</button>
     <button id="btnEscala" aria-pressed="true">Zoom central</button>
     <button id="btnGeo" aria-pressed="true">Mapa</button>
     <button id="btnTema" aria-pressed="false">Noche</button>
     <button id="btnImagen">Guardar imagen</button>
+    <button id="btnKml">Google Earth</button>
     <button id="btnEstelas" aria-pressed="true">Estelas</button>
     <button id="btnSonido" aria-pressed="false">Aviso sonoro</button>
     <button id="btnQuiosco">Quiosco</button>
@@ -460,7 +487,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "18";
+const VERSION = "20";
 
 const CONFIG = {
   lat: 37.402935,
@@ -585,7 +612,7 @@ let mostrarGeo = true;
 let animando = false;
 let ultimoCuadro = 0;
 let sitio = "casa";
-let mostrarFotos = false;
+let mostrarFotos = true;
 let record = null;           // paso más cercano de la sesión
 
 // --- Utilidades ---------------------------------------------
@@ -869,7 +896,7 @@ function procesar(lista) {
     const e = estelas.get(a.icao24);
     const ult = e[e.length - 1];
     if (!ult || Math.hypot(ult.x - p.x, ult.y - p.y) > 0.15) {
-      e.push({ x: p.x, y: p.y });
+      e.push({ x: p.x, y: p.y, pies: av.pies });
       if (e.length > CONFIG.puntosEstela) e.shift();
     }
   }
@@ -1769,6 +1796,103 @@ document.addEventListener("keydown", e => {
 // Se puede entrar directamente con ?quiosco al final de la URL, que
 // es lo cómodo para dejarlo fijo en un dispositivo de sobremesa.
 if (new URLSearchParams(location.search).has("quiosco")) quiosco(true);
+
+// Escuchar la torre. No se incrusta el audio: las condiciones de
+// LiveATC prohíben usar sus emisiones dentro de otros productos, así
+// que esto abre su propio reproductor. Y Sevilla, de todas formas,
+// no tiene emisión desde 2011.
+const FRECUENCIAS = [
+  ["LEMD", "Madrid Barajas", "torre y aproximación"],
+  ["LEBL", "Barcelona El Prat", "torre"],
+  ["LEPA", "Palma de Mallorca", "torre"],
+  ["LEMG", "Málaga", "si está activo"],
+  ["LPPT", "Lisboa", "torre"]
+];
+
+$("btnTorre").addEventListener("click", () => {
+  $("torre").innerHTML = `
+    <div class="caja">
+      <h3>Escuchar torre</h3>
+      <p><b>Sevilla no tiene emisión.</b> Existió un feed de LEZL en LiveATC
+      pero lleva caído desde 2011: nadie lo mantiene. Es el mismo hueco que
+      con el ADS-B.</p>
+      <p>Estos abren el reproductor de LiveATC en otra pestaña. Su audio no
+      puede incrustarse aquí, así que el enlace es lo correcto.</p>
+      <ul>${FRECUENCIAS.map(([icao, nom, nota]) => `
+        <li><a class="feed" target="_blank" rel="noopener"
+               href="https://www.liveatc.net/search/?icao=${icao}">
+          <b>${nom}</b><span>${nota} ↗</span></a></li>`).join("")}
+      </ul>
+      <p>Estás a 6 km del aeropuerto, dentro del radio en el que LiveATC busca
+      voluntarios, y hasta prestan el equipo a quien vive cerca y no lo tiene.
+      La torre de Sevilla la podrías poner tú, y con el mismo receptor con el
+      que recibirías el ADS-B.</p>
+      <button class="cerrarT" id="cerrarTorre">Cerrar</button>
+    </div>`;
+  $("torre").classList.add("visible");
+  $("cerrarTorre").addEventListener("click",
+    () => $("torre").classList.remove("visible"));
+});
+
+// Las estelas de la sesión como trayectorias 3D. A diferencia del
+// KML del servidor, que da puntos sueltos de máxima aproximación,
+// aquí sale el recorrido completo de cada avión mientras lo has
+// tenido a la vista.
+$("btnKml").addEventListener("click", () => {
+  const esc = s => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  const aLatLon = p => {
+    const lat = CONFIG.lat + p.y / 111.32;
+    const lon = CONFIG.lon + p.x / (111.32 * Math.cos(CONFIG.lat * Math.PI / 180));
+    return `${lon.toFixed(6)},${lat.toFixed(6)},${Math.round((p.pies || 0) * 0.3048)}`;
+  };
+
+  const trazos = [];
+  for (const [icao, pts] of estelas) {
+    if (pts.length < 2) continue;
+    const a = ultimos.find(v => v.icao24 === icao);
+    const nombre = (a && a.callsign) || icao.toUpperCase();
+    const modelo = (a && a.ficha && (a.ficha.tipo || a.ficha.icaoTipo)) || "";
+    trazos.push(`
+    <Placemark>
+      <name>${esc(nombre)}</name>
+      <description><![CDATA[${esc(modelo)}]]></description>
+      <styleUrl>#traza</styleUrl>
+      <LineString>
+        <extrude>1</extrude>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>${pts.map(aLatLon).join(" ")}</coordinates>
+      </LineString>
+    </Placemark>`);
+  }
+
+  if (!trazos.length) {
+    aviso("Todavía no hay estelas que exportar. Deja la app abierta un rato.");
+    return;
+  }
+
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Sobre mí · sesión ${new Date().toLocaleString("es-ES")}</name>
+    <Style id="traza">
+      <LineStyle><color>ff1b1b8c</color><width>2</width></LineStyle>
+      <PolyStyle><color>331b1b8c</color></PolyStyle>
+    </Style>
+    <Placemark><name>${esc(CONFIG.nombre)}</name>
+      <Point><coordinates>${CONFIG.lon},${CONFIG.lat},0</coordinates></Point></Placemark>${trazos.join("")}
+  </Document>
+</kml>`;
+
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([kml],
+    { type: "application/vnd.google-earth.kml+xml" }));
+  a.download = "sobre-mi-sesion-" +
+    new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-") + ".kml";
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
 
 $("btnFotos").addEventListener("click", e => {
   mostrarFotos = !mostrarFotos;
