@@ -449,7 +449,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "16";
+const VERSION = "17";
 
 const CONFIG = {
   lat: 37.402935,
@@ -1294,8 +1294,8 @@ async function dibujarDetalle() {
     : `${paso.km.toFixed(1)} km en ${paso.minutos < 1 ? "<1" : Math.round(paso.minutos)} min`;
 
   cont.innerHTML = `
-    ${f.foto ? `<img class="foto" src="${escapar(f.foto)}" alt="">
-                <div class="credito">foto · planespotters.net</div>` : ""}
+    <img class="foto" src="${CONFIG.proxy}/foto/${escapar(a.icao24)}" alt=""
+         referrerpolicy="no-referrer" onerror="this.remove()">
     <div class="interior">
       <button class="cerrar" id="btnCerrar">Cerrar</button>
       <h2>${escapar(r && r.origen ? `${r.origen} → ${r.destino}`
@@ -1518,12 +1518,14 @@ async function pase() {
   // cromo ya está en pantalla igualmente.
   const ficha = fichas.has(elegido.icao24)
     ? fichas.get(elegido.icao24) : await pedirFicha(elegido.icao24);
-  if (ficha && ficha.foto && caja.classList.contains("visible")) {
+  if (caja.classList.contains("visible")) {
     const marco = $("espFoto");
     if (marco) {
       const img = new Image();
+      img.referrerPolicy = "no-referrer";
       img.onload = () => { marco.innerHTML = ""; marco.appendChild(img); };
-      img.src = ficha.foto;
+      img.onerror = () => { marco.innerHTML = "<span>sin foto</span>"; };
+      img.src = CONFIG.proxy + "/foto/" + elegido.icao24;
     }
   }
 }

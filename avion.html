@@ -228,16 +228,20 @@ async function buscar(q) {
     Un solo día registrado: todavía no hay serie que dibujar.</div>`;
 
   // La foto va aparte porque tarda más y no debe frenar el resto.
-  try {
-    const r = await fetch(PROXY + "/aircraft/" + d.icao24);
-    const j = await r.json();
-    const a = j.response && j.response.aircraft;
-    if (a && (a.url_photo || a.url_photo_thumbnail)) {
-      $("foto").innerHTML =
-        `<img src="${escapar(a.url_photo || a.url_photo_thumbnail)}" alt="">
-         <div class="credito">foto · planespotters.net</div>`;
-    }
-  } catch (e) { /* sin foto */ }
+  // Se pide al Worker, que es quien sabe negociar con el banco de
+  // imágenes; si no hay, simplemente no aparece.
+  const img = new Image();
+  img.referrerPolicy = "no-referrer";
+  img.onload = () => {
+    const c = document.getElementById("foto");
+    if (!c) return;
+    c.appendChild(img);
+    const cr = document.createElement("div");
+    cr.className = "credito";
+    cr.textContent = "foto · planespotters.net";
+    c.appendChild(cr);
+  };
+  img.src = PROXY + "/foto/" + d.icao24;
 }
 
 $("ir").addEventListener("click", () => buscar($("q").value.trim()));

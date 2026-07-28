@@ -161,33 +161,43 @@ function desdeLocal() {
 
 // --- Fotos ---------------------------------------------------
 
-// Se piden de una en una y con pausa: adsbdb es gratis y sin clave,
-// así que lo mínimo es no martillearlo.
+// Las fotos se piden al Worker, no al banco de imágenes: los
+// servidores de fotos rechazan las peticiones cruzadas y la imagen
+// se quedaba cargando para siempre.
+//
+// Todos los caminos acaban escribiendo algo en el marco, incluido el
+// de error: un hueco que dice "buscando…" eternamente es peor que
+// uno que dice "sin foto".
+function cargarFoto(m) {
+  return new Promise(resolve => {
+    const marco = document.getElementById("m-" + m.tipo);
+    if (!marco || !m.ejemplar) return resolve();
+
+    const img = new Image();
+    img.alt = m.tipo;
+    img.referrerPolicy = "no-referrer";
+
+    const fallo = motivo => { marco.innerHTML = `<span>${motivo}</span>`; resolve(); };
+    const corte = setTimeout(() => { img.src = ""; fallo("sin respuesta"); }, 12000);
+
+    img.onload = () => {
+      clearTimeout(corte);
+      marco.innerHTML = "";
+      marco.appendChild(img);
+      resolve();
+    };
+    img.onerror = () => { clearTimeout(corte); fallo("sin foto"); };
+
+    img.src = `${PROXY}/foto/${m.ejemplar}`;
+  });
+}
+
+// De una en una y con pausa: no hace falta martillear al Worker ni
+// a adsbdb, y así la página se va poblando de arriba abajo.
 async function ponerFotos(modelos) {
   for (const m of modelos) {
-    if (!m.ejemplar) continue;
-    try {
-      const r = await fetch(`${PROXY}/aircraft/${m.ejemplar}`);
-      const j = await r.json();
-      const a = j.response && j.response.aircraft;
-      const marco = $("m-" + m.tipo);
-      if (!marco) continue;
-
-      if (a && (a.url_photo_thumbnail || a.url_photo)) {
-        const img = new Image();
-        img.alt = m.tipo;
-        img.loading = "lazy";
-        img.src = a.url_photo_thumbnail || a.url_photo;
-        img.onload = () => { marco.innerHTML = ""; marco.appendChild(img); };
-      } else if (a && a.type) {
-        const nom = document.querySelector("#f-" + m.tipo + " .nom");
-        if (nom && !nom.textContent.trim()) nom.textContent = a.type;
-        marco.innerHTML = "<span>sin foto</span>";
-      } else {
-        marco.innerHTML = "<span>sin ficha</span>";
-      }
-    } catch (e) { /* uno menos, no pasa nada */ }
-    await new Promise(r => setTimeout(r, 180));
+    await cargarFoto(m);
+    await new Promise(r => setTimeout(r, 120));
   }
 }
 
