@@ -205,30 +205,21 @@ const CONFIG = {
   nombre: "Sevilla · 37.4029 N, 5.9578 O",
   radioKm: 25,
 
-  // URL del Worker, sin barra final. Con esto puesto, el navegador
-  // deja de hablar con OpenSky directamente y desaparecen tanto el
-  // problema de CORS como la necesidad de credenciales aquí.
+  // URL del Worker, sin barra final. Es obligatorio: el Worker
+  // elige la fuente de datos, normaliza el formato y pone las
+  // cabeceras CORS que el navegador exige.
   //   ej: "https://sobre-mi.TUCUENTA.workers.dev"
-  proxy: "https://TU-WORKER.workers.dev",
+  proxy: "",
 
-  // Con Worker aguanta 15 s de sobra. Sin él, súbelo a 60000.
   refrescoMs: 15000,
-
-  // Solo se usan en modo directo (sin proxy).
-
 
   maxTiras: 12,
   maxFichasPorCiclo: 6,
   puntosEstela: 25
 };
 
-const URL_TOKEN = "https://auth.opensky-network.org/auth/realms/" +
-                  "opensky-network/protocol/openid-connect/token";
-
 // --- Estado en memoria -------------------------------------
 
-let token = null;            // {valor, expira}
-let modoAnonimo = false;
 let estelas = new Map();     // icao24 -> [{x,y}]
 let fichas = new Map();      // icao24 -> ficha | null
 let rutas = new Map();       // callsign -> ruta | null
@@ -263,55 +254,21 @@ function aviso(texto) {
   $("aviso").innerHTML = texto ? `<div class="aviso">${texto}</div>` : "";
 }
 
-// --- OpenSky -----------------------------------------------
+// --- Datos ---------------------------------------------------
 
-async function obtenerToken() {
-  if (CONFIG.proxy) return null;              // el Worker ya autentica
-  if (modoAnonimo || !CONFIG.clientId) return null;
-  if (token && token.expira > Date.now() + 60000) return token.valor;
+let fuenteActual = "";
 
-  try {
-    const res = await fetch(URL_TOKEN, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        client_id: CONFIG.clientId,
-        client_secret: CONFIG.clientSecret
-      })
-    });
-    if (!res.ok) throw new Error("token " + res.status);
-    const j = await res.json();
-    token = { valor: j.access_token, expira: Date.now() + (j.expires_in - 30) * 1000 };
-    return token.valor;
-  } catch (e) {
-    // El servidor de auth puede rechazar la petición desde el
-    // navegador por CORS. No es un fallo fatal: seguimos en
-    // anónimo, que funciona con un límite más bajo.
-    modoAnonimo = true;
-    aviso("Sin autenticar: el navegador no puede pedir el token directamente. " +
-          "Funciona en modo anónimo con menos peticiones por hora. " +
-          "Se arregla poniendo el Worker por delante.");
-    return null;
-  }
-}
+async function pedirAviones() {
+  if (!CONFIG.proxy) throw new Error("falta CONFIG.proxy");
 
-async function pedirEstados() {
-  const dLat = CONFIG.radioKm / 111.32;
-  const dLon = CONFIG.radioKm / (111.32 * Math.cos(CONFIG.lat * Math.PI / 180));
+  const res = await fetch(
+    `${CONFIG.proxy}/aviones?lat=${CONFIG.lat}&lon=${CONFIG.lon}&km=${CONFIG.radioKm}`
+  );
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
 
-  const caja = `lamin=${CONFIG.lat - dLat}&lomin=${CONFIG.lon - dLon}` +
-               `&lamax=${CONFIG.lat + dLat}&lomax=${CONFIG.lon + dLon}`;
-
-  const url = CONFIG.proxy
-    ? `${CONFIG.proxy}/states?${caja}`
-    : `https://opensky-network.org/api/states/all?${caja}`;
-
-  const t = await obtenerToken();
-  const res = await fetch(url, t ? { headers: { Authorization: "Bearer " + t } } : {});
-  if (!res.ok) throw new Error("OpenSky " + res.status);
-  const j = await res.json();
-  return j.states || [];
+  fuenteActual = j.fuente || "";
+  return j.aviones || [];
 }
 
 // --- adsbdb ------------------------------------------------
@@ -357,57 +314,71 @@ async function pedirRuta(callsign) {
 
 // --- Procesado ---------------------------------------------
 
-const IDX = { icao24:0, callsign:1, lon:5, lat:6, altBaro:7, enSuelo:8,
-              velocidad:9, rumbo:10, velVertical:11, altGeo:13 };
+function procesar(lista) {
+  const salida = [];
 
-function procesar(estados) {
-  const aviones = [];
-  for (const s of estados) {
-    if (s[IDX.lat] == null || s[IDX.lon] == null || s[IDX.enSuelo]) continue;
+  for (const a of lista) {
+    if (a.enSuelo) continue;
 
-    const p = proyectar(s[IDX.lat], s[IDX.lon]);
+    const p = proyectar(a.lat, a.lon);
     const d = distancia(p);
     if (d > CONFIG.radioKm) continue;
 
-    const alt = s[IDX.altGeo] ?? s[IDX.altBaro] ?? 0;
-    const icao24 = s[IDX.icao24];
+    // Las fuentes readsb ya traen tipo y matrícula con la posición,
+    // así que la ficha suele estar completa sin consultar nada.
+    const inline = (a.tipo || a.matricula) ? {
+      tipo: a.descripcion || a.tipo || "",
+      icaoTipo: a.tipo || "",
+      matricula: a.matricula || "",
+      operador: ""
+    } : null;
 
-    aviones.push({
-      icao24,
-      callsign: (s[IDX.callsign] || "").trim(),
+    salida.push({
+      icao24: a.icao24,
+      callsign: a.callsign || "",
       x: p.x, y: p.y,
       distanciaKm: d,
       acimut: acimut(p),
-      pies: alt * 3.28084,
-      rumbo: s[IDX.rumbo] || 0,
-      vv: s[IDX.velVertical] || 0,
-      nudos: (s[IDX.velocidad] || 0) * 1.94384,
-      ficha: fichas.get(icao24) || null,
-      ruta: rutas.get((s[IDX.callsign] || "").trim()) || null
+      pies: a.altPies || 0,
+      rumbo: a.rumbo || 0,
+      subiendo: (a.vvPiesMin || 0) > 200,
+      bajando: (a.vvPiesMin || 0) < -200,
+      nudos: a.velNudos || 0,
+      ficha: inline || fichas.get(a.icao24) || null,
+      ruta: rutas.get(a.callsign || "") || null
     });
 
     // Estela: el registro impreso de por dónde ha pasado.
-    if (!estelas.has(icao24)) estelas.set(icao24, []);
-    const e = estelas.get(icao24);
+    if (!estelas.has(a.icao24)) estelas.set(a.icao24, []);
+    const e = estelas.get(a.icao24);
     const ult = e[e.length - 1];
     if (!ult || Math.hypot(ult.x - p.x, ult.y - p.y) > 0.15) {
       e.push({ x: p.x, y: p.y });
       if (e.length > CONFIG.puntosEstela) e.shift();
     }
   }
-  return aviones.sort((a, b) => a.distanciaKm - b.distanciaKm);
+
+  return salida.sort((a, b) => a.distanciaKm - b.distanciaKm);
 }
 
-async function enriquecer(aviones) {
+// Con las fuentes nuevas casi nunca hace falta pedir la ficha:
+// el presupuesto se gasta sobre todo en rutas, que es lo único
+// que no viene con la posición.
+async function enriquecer(lista) {
   let presupuesto = CONFIG.maxFichasPorCiclo;
-  for (const a of aviones.slice(0, CONFIG.maxTiras)) {
+
+  for (const a of lista.slice(0, CONFIG.maxTiras)) {
     if (presupuesto <= 0) break;
-    let gastado = false;
-    if (!fichas.has(a.icao24)) { a.ficha = await pedirFicha(a.icao24); gastado = true; }
-    else a.ficha = fichas.get(a.icao24);
-    if (a.callsign && !rutas.has(a.callsign)) { a.ruta = await pedirRuta(a.callsign); gastado = true; }
-    else a.ruta = rutas.get(a.callsign) || null;
-    if (gastado) presupuesto--;
+
+    if (!a.ficha) {
+      if (fichas.has(a.icao24)) a.ficha = fichas.get(a.icao24);
+      else { a.ficha = await pedirFicha(a.icao24); presupuesto--; }
+    }
+
+    if (a.callsign) {
+      if (rutas.has(a.callsign)) a.ruta = rutas.get(a.callsign);
+      else { a.ruta = await pedirRuta(a.callsign); presupuesto--; }
+    }
   }
 }
 
@@ -557,7 +528,7 @@ function dibujarTiras(aviones) {
     tira.tabIndex = 0;
     tira.setAttribute("role", "button");
 
-    const tend = a.vv > 1.5 ? "↑" : a.vv < -1.5 ? "↓" : "→";
+    const tend = a.subiendo ? "↑" : a.bajando ? "↓" : "→";
 
     tira.innerHTML = `
       <div class="canto"></div>
@@ -599,17 +570,19 @@ function refrescarVista() {
 async function ciclo() {
   try {
     $("estado").textContent = "consultando";
-    const aviones = procesar(await pedirEstados());
-    await enriquecer(aviones);
+    const lista = procesar(await pedirAviones());
+    await enriquecer(lista);
 
-    aviones.forEach(a => vistos.set(a.icao24, a.callsign || a.icao24));
-    ultimos = aviones;
+    lista.forEach(a => vistos.set(a.icao24, a.callsign || a.icao24));
+    ultimos = lista;
 
-    $("cuenta").textContent = aviones.length + " en el aire";
+    $("cuenta").textContent = lista.length + " en el aire" +
+      (fuenteActual ? " · " + fuenteActual : "");
     $("vistos").textContent = vistos.size + " vistos en la sesión";
     $("punto").classList.add("vivo");
     $("estado").textContent = new Date().toLocaleTimeString("es-ES",
       { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    aviso("");
 
     refrescarVista();
   } catch (e) {
@@ -617,12 +590,9 @@ async function ciclo() {
     $("punto").classList.remove("vivo");
     $("estado").textContent = "sin datos";
     aviso(CONFIG.proxy
-      ? `El Worker no responde (${e.message}). Comprueba /health y que este ` +
-        `origen esté en la lista de ORIGENES.`
-      : "El navegador no puede hablar con OpenSky directamente: la API no " +
-        "manda cabeceras CORS, así que el fetch se bloquea aunque la URL sea " +
-        "correcta. Esto se resuelve poniendo el Worker y rellenando " +
-        "CONFIG.proxy. Detalle: " + e.message);
+      ? `El Worker no ha devuelto datos: ${e.message}. Abre /diag para ver ` +
+        `qué fuentes están respondiendo.`
+      : "Falta rellenar CONFIG.proxy con la URL del Worker.");
   }
 }
 
