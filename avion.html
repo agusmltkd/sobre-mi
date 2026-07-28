@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sobre mí · ficha</title>
+<meta name="theme-color" content="#E8E2D2">
+<link rel="apple-touch-icon" href="icono.png">
+<style>
+:root{
+  --papel:#E8E2D2; --papel-hondo:#DED6C3; --papel-marcado:#D4CBB5;
+  --tinta:#1C1B18; --tinta-media:#4A4741; --tenue:#6B675C;
+  --regla:#B4AE9C; --sello:#8C3A1E;
+  --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",var(--mono);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--papel);color:var(--tinta);font-family:var(--mono);font-size:14px;
+  line-height:1.35;padding:env(safe-area-inset-top) env(safe-area-inset-right)
+  env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background-image:radial-gradient(circle at 20% 15%,rgba(0,0,0,.025) 0 30%,transparent 60%),
+  radial-gradient(circle at 85% 80%,rgba(0,0,0,.02) 0 25%,transparent 55%);
+  background-attachment:fixed}
+.envoltura{max-width:640px;margin:0 auto;padding:0 14px 44px}
+.pestanas{display:flex;border-bottom:1px solid var(--regla);position:sticky;top:0;
+  z-index:11;background:var(--papel)}
+.pestanas a{flex:1;text-align:center;padding:12px 4px 10px;font-size:9.5px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tenue);
+  text-decoration:none;border-bottom:2px solid transparent}
+.pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
+
+.buscador{display:flex;gap:8px;margin:16px 0}
+.buscador input{flex:1;font-family:var(--mono);font-size:14px;background:var(--papel-hondo);
+  border:1px solid var(--regla);color:var(--tinta);padding:10px 12px;letter-spacing:.06em}
+.buscador input::placeholder{color:var(--tenue)}
+.buscador button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;background:transparent;color:var(--tenue);
+  border:1px solid var(--regla);padding:10px 14px;cursor:pointer}
+
+.cabecera{background:var(--papel-hondo);border:1px solid var(--tinta);
+  margin-bottom:16px;overflow:hidden}
+.cabecera img{width:100%;display:block}
+.cabecera .credito{font-size:8px;color:var(--tenue);padding:3px 12px;
+  letter-spacing:.08em;text-transform:uppercase}
+.cabecera .cuerpo{padding:13px}
+.cabecera h1{font-family:var(--display);font-size:30px;font-weight:600;
+  letter-spacing:.05em;color:var(--sello);line-height:1}
+.cabecera .mod{font-size:12px;color:var(--tinta-media);margin-top:4px}
+.cabecera .op{font-size:11px;color:var(--tenue);margin-top:2px;font-style:italic}
+
+.marcadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+  gap:10px;margin-bottom:20px}
+.marcador{background:var(--papel-hondo);border:1px solid var(--regla);padding:10px 11px}
+.marcador .k{font-size:8px;letter-spacing:.13em;text-transform:uppercase;color:var(--tenue)}
+.marcador .v{font-family:var(--display);font-size:25px;font-weight:600;
+  line-height:1.05;margin-top:3px}
+.marcador .u{font-size:9px;color:var(--tenue)}
+
+h2{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--tenue);
+  margin:22px 0 9px;padding-bottom:5px;border-bottom:1px solid var(--regla)}
+.lienzo{background:var(--papel-hondo);border:1px solid var(--regla);padding:12px}
+.lienzo svg{display:block;width:100%;height:auto}
+
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{font-size:8px;letter-spacing:.13em;text-transform:uppercase;color:var(--tenue);
+  text-align:left;padding:5px 6px;border-bottom:1px solid var(--regla);font-weight:400}
+td{padding:6px;border-bottom:1px solid rgba(180,174,156,.45)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr td:first-child{color:var(--sello);font-weight:600}
+
+.vacio{padding:34px 0;text-align:center;color:var(--tenue);font-size:12px}
+@media (max-width:520px){
+  .envoltura{padding:0 11px 44px}
+  .cabecera h1{font-size:25px}
+  .marcadores{grid-template-columns:repeat(2,1fr)}
+  table{font-size:10px} td,th{padding:5px 4px}
+}
+</style>
+</head>
+<body>
+<div class="envoltura">
+
+  <nav class="pestanas">
+    <a href="index.html">En vivo</a>
+    <a href="historia.html">Historia</a>
+    <a href="modelos.html">Modelos</a>
+    <a href="comparar.html">Comparar</a>
+    <a href="avion.html" class="activa">Ficha</a>
+  </nav>
+
+  <div class="buscador">
+    <input id="q" placeholder="Matrícula, indicativo o hex" autocapitalize="characters"
+           autocomplete="off" spellcheck="false">
+    <button id="ir">Buscar</button>
+  </div>
+
+  <div id="contenido"><div class="vacio">Escribe una matrícula como EC-MXY,
+    un indicativo como IBE3946 o un hexadecimal.</div></div>
+
+</div>
+
+<script>
+// ============================================================
+//  SOBRE MÍ · ficha de avión
+//
+//  Todas las veces que un avión concreto ha pasado por encima.
+//  Es lo que convierte el registro en biografías: deja de ser una
+//  tabla y pasa a ser "este ha venido cuarenta y siete veces".
+// ============================================================
+
+const PROXY = "https://sobre-mi.mayoragustin01.workers.dev";
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const crear = (t, a) => {
+  const e = document.createElementNS(NS, t);
+  for (const k in a) e.setAttribute(k, a[k]);
+  return e;
+};
+const escapar = s => String(s == null ? "" : s)
+  .replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+const fmtAlt = p => p >= 10000
+  ? "FL" + String(Math.round(p / 100)).padStart(3, "0")
+  : Math.round(p / 100) * 100 + " ft";
+
+// Cada paso, un punto: distancia mínima frente a la fecha. Si el
+// avión sigue una ruta fija, los puntos se alinean; si varía, se
+// dispersan. Se ve antes en el dibujo que en la tabla.
+function nube(pasos) {
+  const svg = crear("svg", { viewBox: "0 0 400 130" });
+  const fechas = pasos.map(p => p.fecha).sort();
+  const t0 = new Date(fechas[0]).getTime();
+  const t1 = Math.max(new Date(fechas[fechas.length - 1]).getTime(), t0 + 864e5);
+  const maxKm = Math.max(...pasos.map(p => p.min_km), 5);
+
+  for (let i = 0; i <= 4; i++) {
+    const y = 12 + (i / 4) * 96;
+    svg.appendChild(crear("line", { x1: 34, y1: y, x2: 396, y2: y,
+      stroke: "#B4AE9C", "stroke-width": .5, "stroke-dasharray": "2 3" }));
+    const t = crear("text", { x: 30, y: y + 3, fill: "#8A8579", "font-size": 8,
+      "font-family": "monospace", "text-anchor": "end" });
+    t.textContent = Math.round(maxKm * i / 4);
+    svg.appendChild(t);
+  }
+
+  for (const p of pasos) {
+    const x = 34 + ((new Date(p.fecha).getTime() - t0) / (t1 - t0)) * 360;
+    const y = 12 + (p.min_km / maxKm) * 96;
+    svg.appendChild(crear("circle", { cx: x, cy: y, r: 2.6,
+      fill: "#8C3A1E", "fill-opacity": .65 }));
+  }
+
+  [[fechas[0], 34, "start"], [fechas[fechas.length - 1], 396, "end"]].forEach(([f, x, anc]) => {
+    const t = crear("text", { x, y: 124, fill: "#6B675C", "font-size": 8,
+      "font-family": "monospace", "text-anchor": anc });
+    t.textContent = f;
+    svg.appendChild(t);
+  });
+  return svg;
+}
+
+function marcador(k, v, u) {
+  return `<div class="marcador"><div class="k">${k}</div>` +
+         `<div class="v">${v}</div><div class="u">${u || ""}</div></div>`;
+}
+
+async function buscar(q) {
+  const cont = $("contenido");
+  if (!q) return;
+  cont.innerHTML = `<div class="vacio">Buscando…</div>`;
+  history.replaceState(null, "", "?q=" + encodeURIComponent(q));
+
+  let d;
+  try {
+    const r = await fetch(PROXY + "/registro/avion/" + encodeURIComponent(q));
+    d = await r.json();
+    if (d.error) throw new Error(d.error);
+  } catch (e) {
+    cont.innerHTML = `<div class="vacio">Error: ${escapar(e.message || e)}</div>`;
+    return;
+  }
+
+  if (!d.encontrado) {
+    cont.innerHTML = `<div class="vacio">Ningún registro de <b>${escapar(q)}</b>.<br><br>` +
+      `Solo aparecen aviones que hayan pasado por tu vertical desde que
+       el registro está en marcha.</div>`;
+    return;
+  }
+
+  const pasos = d.pasos || [];
+  const veces = pasos.reduce((a, p) => a + (p.veces || 1), 0);
+
+  cont.innerHTML = `
+    <div class="cabecera">
+      <div id="foto"></div>
+      <div class="cuerpo">
+        <h1>${escapar(d.matricula || d.icao24.toUpperCase())}</h1>
+        <div class="mod">${escapar(d.modelo || d.tipo || "")}</div>
+        ${d.operador ? `<div class="op">${escapar(d.operador)}</div>` : ""}
+      </div>
+    </div>
+
+    <div class="marcadores">
+      ${marcador("Días que ha venido", d.dias)}
+      ${marcador("Minutos a la vista", veces)}
+      ${marcador("Más cerca", d.masCerca != null ? d.masCerca.toFixed(2) : "—", "km")}
+      ${marcador("Distancia media", d.mediaKm != null ? d.mediaKm.toFixed(1) : "—", "km")}
+    </div>
+
+    <h2>Cada paso, por fecha y distancia</h2>
+    <div class="lienzo" id="nube"></div>
+
+    <h2>Historial completo</h2>
+    <table>
+      <thead><tr><th>Día</th><th>Vuelo</th><th>Ruta</th>
+        <th class="num">km</th><th class="num">Altitud</th><th class="num">min</th></tr></thead>
+      <tbody>${pasos.map(p => `<tr>
+        <td>${escapar(p.fecha)}</td>
+        <td>${escapar(p.callsign || "—")}</td>
+        <td>${escapar(p.origen && p.destino ? p.origen + "→" + p.destino : "—")}</td>
+        <td class="num">${Number(p.min_km).toFixed(2)}</td>
+        <td class="num">${fmtAlt(p.min_pies || 0)}</td>
+        <td class="num">${p.veces || 1}</td></tr>`).join("")}</tbody>
+    </table>`;
+
+  if (pasos.length > 1) $("nube").appendChild(nube(pasos));
+  else $("nube").innerHTML = `<div style="font-size:11px;color:var(--tenue)">
+    Un solo día registrado: todavía no hay serie que dibujar.</div>`;
+
+  // La foto va aparte porque tarda más y no debe frenar el resto.
+  try {
+    const r = await fetch(PROXY + "/aircraft/" + d.icao24);
+    const j = await r.json();
+    const a = j.response && j.response.aircraft;
+    if (a && (a.url_photo || a.url_photo_thumbnail)) {
+      $("foto").innerHTML =
+        `<img src="${escapar(a.url_photo || a.url_photo_thumbnail)}" alt="">
+         <div class="credito">foto · planespotters.net</div>`;
+    }
+  } catch (e) { /* sin foto */ }
+}
+
+$("ir").addEventListener("click", () => buscar($("q").value.trim()));
+$("q").addEventListener("keydown", e => {
+  if (e.key === "Enter") buscar($("q").value.trim());
+});
+
+const inicial = new URLSearchParams(location.search).get("q");
+if (inicial) { $("q").value = inicial; buscar(inicial); }
+</script>
+</body>
+</html>

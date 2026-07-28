@@ -138,6 +138,17 @@ h1{
 }
 .etiqueta-cuadro{left:12px}
 .cuenta-cuadro{right:12px}
+/* Atajo al quiosco donde se busca: sobre el propio radar, no
+   enterrado entre ocho botones al final de la página. */
+.expandir{
+  position:absolute;bottom:10px;right:10px;z-index:5;
+  width:34px;height:34px;line-height:1;
+  font-family:var(--mono);font-size:15px;
+  background:var(--papel);color:var(--tenue);
+  border:1px solid var(--regla);cursor:pointer;
+}
+.expandir:hover{color:var(--tinta);border-color:var(--tinta)}
+html[data-quiosco] .expandir{display:none}
 
 /* ---------- Panel de detalle ---------- */
 
@@ -247,6 +258,43 @@ h1{
   outline:2px solid var(--sello);outline-offset:2px}
 .vacio{padding:26px 0;text-align:center;color:var(--tenue);font-size:12px}
 
+/* ---------- Modo espectador ----------
+   Solo en quiosco: cuando nadie toca nada, va pasando cromos de los
+   aviones más interesantes. Un salvapantallas con datos. */
+#espectador{display:none}
+html[data-quiosco] #espectador.visible{
+  display:flex;position:fixed;inset:0;z-index:25;
+  background:var(--papel);
+  align-items:center;justify-content:center;gap:36px;padding:5vh 6vw;
+  animation:aparecer .6s ease;
+}
+@keyframes aparecer{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){
+  html[data-quiosco] #espectador.visible{animation:none}
+}
+#espectador .lamina{
+  flex:0 1 46%;max-width:52vw;border:1px solid var(--regla);
+  background:var(--papel-hondo);aspect-ratio:4/3;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+#espectador .lamina img{width:100%;height:100%;object-fit:cover}
+#espectador .lamina span{font-size:12px;color:var(--tenue);letter-spacing:.1em}
+#espectador .texto{flex:1 1 40%;min-width:0}
+#espectador .motivo{font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--sello);margin-bottom:10px}
+#espectador h2{font-family:var(--display);font-size:clamp(30px,6vw,64px);
+  font-weight:600;letter-spacing:.04em;line-height:.98}
+#espectador .mod{font-size:clamp(13px,1.8vw,20px);color:var(--tinta-media);margin-top:8px}
+#espectador .ruta{font-size:clamp(13px,1.8vw,20px);color:var(--sello);margin-top:6px}
+#espectador .datos{margin-top:18px;display:flex;gap:26px;flex-wrap:wrap}
+#espectador .datos div{font-size:clamp(16px,2.4vw,28px);font-weight:600}
+#espectador .datos small{display:block;font-size:10px;font-weight:400;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--tenue);margin-bottom:2px}
+@media (max-width:700px){
+  html[data-quiosco] #espectador.visible{flex-direction:column;gap:18px}
+  #espectador .lamina{flex:0 0 auto;width:76vw;max-width:none}
+}
+
 /* ---------- Modo quiosco ----------
    Todo fuera menos el radar. Pensado para un iPad viejo en una
    estantería: se mira de lejos, así que el dibujo manda y el texto
@@ -317,6 +365,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
     <a href="historia.html">Historia</a>
     <a href="modelos.html">Modelos</a>
     <a href="comparar.html">Comparar</a>
+    <a href="avion.html">Ficha</a>
   </nav>
 
   <header>
@@ -337,12 +386,14 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
   </header>
 
   <button id="salirQuiosco">Salir</button>
+  <div id="espectador"></div>
   <div id="alerta"></div>
   <div id="aviso"></div>
 
   <div class="cuadro">
     <span class="etiqueta-cuadro">Vertical</span>
     <span class="cuenta-cuadro" id="cuenta">—</span>
+    <button class="expandir" id="btnQuiosco2" title="Modo quiosco">⤢</button>
     <svg id="scope" viewBox="0 0 400 400" role="img"
          aria-label="Tráfico aéreo alrededor de tu posición"></svg>
   </div>
@@ -398,7 +449,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "15";
+const VERSION = "16";
 
 const CONFIG = {
   lat: 37.402935,
@@ -1408,6 +1459,93 @@ function dibujarTiras(aviones) {
   });
 }
 
+// --- Modo espectador ----------------------------------------
+//
+// En quiosco, cuando nadie toca nada, se van pasando cromos de los
+// aviones que merecen la pena. La selección no es aleatoria: rota
+// entre criterios distintos para que no salga siempre el mismo.
+
+let espTemporizador = null, espInactivo = null, espIndice = 0;
+const ESP_ESPERA = 45000;   // sin tocar nada
+const ESP_PASE = 14000;     // cada cromo
+
+const CRITERIOS = [
+  ["El más cercano", l => l.slice().sort((a, b) => a.distanciaKm - b.distanciaKm)[0]],
+  ["Nunca visto", l => l.find(a => a.novedad)],
+  ["Poco común", l => l.find(a => a.militar || a.helicoptero || a.interesante)],
+  ["El más alto", l => l.slice().sort((a, b) => b.pies - a.pies)[0]],
+  ["Va a pasar cerca", l => l.slice()
+    .filter(a => a.paso && !a.paso.alejandose)
+    .sort((a, b) => a.paso.km - b.paso.km)[0]],
+  ["El más rápido", l => l.slice().sort((a, b) => b.nudos - a.nudos)[0]]
+];
+
+async function pase() {
+  const caja = $("espectador");
+  if (!ultimos.length) { caja.classList.remove("visible"); return; }
+
+  // Se recorren los criterios hasta encontrar uno que dé resultado.
+  let elegido = null, motivo = "";
+  for (let i = 0; i < CRITERIOS.length; i++) {
+    const [nom, fn] = CRITERIOS[(espIndice + i) % CRITERIOS.length];
+    const a = fn(ultimos);
+    if (a) { elegido = a; motivo = nom; espIndice = (espIndice + i + 1) % CRITERIOS.length; break; }
+  }
+  if (!elegido) return;
+
+  const f = elegido.ficha || {};
+  const r = elegido.ruta;
+
+  caja.innerHTML = `
+    <div class="lamina" id="espFoto"><span>—</span></div>
+    <div class="texto">
+      <div class="motivo">${escapar(motivo)}</div>
+      <h2>${escapar(elegido.callsign || elegido.icao24.toUpperCase())}</h2>
+      <div class="mod">${escapar(f.tipo || f.icaoTipo || "")}
+        ${f.matricula ? " · " + escapar(f.matricula) : ""}</div>
+      ${r && r.origen ? `<div class="ruta">${escapar(r.origenNombre || r.origen)}
+        → ${escapar(r.destinoNombre || r.destino)}</div>` : ""}
+      <div class="datos">
+        <div><small>Distancia</small>${elegido.distanciaKm.toFixed(1)} km</div>
+        <div><small>Altitud</small>${formatoAltitud(elegido.pies)}</div>
+        <div><small>Velocidad</small>${Math.round(elegido.nudos)} kt</div>
+        <div><small>Rumbo</small>${RUMBOS[octante(elegido.acimut)]}</div>
+      </div>
+    </div>`;
+  caja.classList.add("visible");
+
+  // La foto se pide después de pintar: si tarda o no existe, el
+  // cromo ya está en pantalla igualmente.
+  const ficha = fichas.has(elegido.icao24)
+    ? fichas.get(elegido.icao24) : await pedirFicha(elegido.icao24);
+  if (ficha && ficha.foto && caja.classList.contains("visible")) {
+    const marco = $("espFoto");
+    if (marco) {
+      const img = new Image();
+      img.onload = () => { marco.innerHTML = ""; marco.appendChild(img); };
+      img.src = ficha.foto;
+    }
+  }
+}
+
+function pararEspectador() {
+  clearInterval(espTemporizador); espTemporizador = null;
+  $("espectador").classList.remove("visible");
+}
+
+function reiniciarInactividad() {
+  pararEspectador();
+  clearTimeout(espInactivo);
+  if (!document.documentElement.hasAttribute("data-quiosco")) return;
+  espInactivo = setTimeout(() => {
+    pase();
+    espTemporizador = setInterval(pase, ESP_PASE);
+  }, ESP_ESPERA);
+}
+
+["pointerdown", "keydown"].forEach(ev =>
+  document.addEventListener(ev, reiniciarInactividad, { passive: true }));
+
 // --- Ciclo --------------------------------------------------
 
 // El radar siempre enseña todo; el filtro solo afecta a la lista,
@@ -1579,6 +1717,7 @@ $("bAqui").addEventListener("click", () => {
 // Si el navegador no deja, se queda en la vista limpia igualmente.
 async function quiosco(activo) {
   document.documentElement.toggleAttribute("data-quiosco", activo);
+  if (activo) reiniciarInactividad(); else { pararEspectador(); clearTimeout(espInactivo); }
   try {
     if (activo && document.documentElement.requestFullscreen) {
       await document.documentElement.requestFullscreen();
@@ -1597,6 +1736,7 @@ async function quiosco(activo) {
 }
 
 $("btnQuiosco").addEventListener("click", () => quiosco(true));
+$("btnQuiosco2").addEventListener("click", () => quiosco(true));
 $("salirQuiosco").addEventListener("click", () => quiosco(false));
 
 document.addEventListener("keydown", e => {
