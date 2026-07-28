@@ -4,7 +4,7 @@
 // nunca se cachean, porque un avión de hace veinte minutos es
 // peor que no tener dato.
 
-const CACHE = "sobre-mi-v2";
+const CACHE = "sobre-mi-v3";
 
 const CARCASA = [
   "./",

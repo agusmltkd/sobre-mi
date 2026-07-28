@@ -209,7 +209,7 @@ const CONFIG = {
   // elige la fuente de datos, normaliza el formato y pone las
   // cabeceras CORS que el navegador exige.
   //   ej: "https://sobre-mi.TUCUENTA.workers.dev"
-  proxy: "https://sobre-mi.mayoragustin01.workers.dev",
+  proxy: "",
 
   refrescoMs: 15000,
 
@@ -257,6 +257,7 @@ function aviso(texto) {
 // --- Datos ---------------------------------------------------
 
 let fuenteActual = "";
+let aportes = {};
 
 async function pedirAviones() {
   if (!CONFIG.proxy) throw new Error("falta CONFIG.proxy");
@@ -268,7 +269,16 @@ async function pedirAviones() {
   if (!res.ok) throw new Error(j.error || ("HTTP " + res.status));
 
   fuenteActual = j.fuente || "";
+  aportes = j.aportes || {};
   return j.aviones || [];
+}
+
+// "No hay aviones" y "nadie está escuchando" se ven igual desde
+// aquí, pero significan cosas opuestas. Si ninguna red ha aportado
+// un solo contacto, lo que falta es cobertura, no tráfico.
+function hayCobertura() {
+  const valores = Object.values(aportes);
+  return valores.some(v => typeof v === "number" && v > 0);
 }
 
 // --- adsbdb ------------------------------------------------
@@ -517,7 +527,13 @@ function dibujarTiras(aviones) {
   cont.innerHTML = "";
 
   if (!aviones.length) {
-    cont.innerHTML = `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo</div>`;
+    const detalle = Object.entries(aportes)
+      .map(([k, v]) => `${k}: ${v}`).join(" · ");
+    cont.innerHTML = hayCobertura()
+      ? `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo</div>`
+      : `<div class="vacio">Ninguna red ve nada por aquí.<br>` +
+        `Probablemente no hay receptores cerca, no que el cielo esté vacío.` +
+        `<br><br><span style="font-size:10px">${detalle}</span></div>`;
     return;
   }
 
@@ -576,8 +592,9 @@ async function ciclo() {
     lista.forEach(a => vistos.set(a.icao24, a.callsign || a.icao24));
     ultimos = lista;
 
-    $("cuenta").textContent = lista.length + " en el aire" +
-      (fuenteActual ? " · " + fuenteActual : "");
+    $("cuenta").textContent = hayCobertura()
+      ? lista.length + " en el aire · " + fuenteActual
+      : "sin cobertura";
     $("vistos").textContent = vistos.size + " vistos en la sesión";
     $("punto").classList.add("vivo");
     $("estado").textContent = new Date().toLocaleTimeString("es-ES",
