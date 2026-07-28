@@ -272,9 +272,10 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
     <label>Radio
       <select id="radio">
         <option value="10">10 km</option>
-        <option value="25" selected>25 km</option>
+        <option value="25">25 km</option>
         <option value="50">50 km</option>
-        <option value="100">100 km</option>
+        <option value="100" selected>100 km</option>
+        <option value="200">200 km</option>
       </select>
     </label>
     <label>Ver
@@ -304,13 +305,13 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "9";
+const VERSION = "10";
 
 const CONFIG = {
   lat: 37.402935,
   lon: -5.957803,
   nombre: "Sevilla · 37.4029 N, 5.9578 O",
-  radioKm: 25,
+  radioKm: 100,
 
   // URL del Worker, sin barra final.
   proxy: "https://sobre-mi.mayoragustin01.workers.dev",
@@ -1130,7 +1131,11 @@ function dibujarTiras(aviones) {
   if (!aviones.length) {
     const detalle = Object.entries(aportes).map(([k, v]) => `${k}: ${v}`).join(" · ");
     cont.innerHTML = hayCobertura()
-      ? `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo</div>`
+      ? `<div class="vacio">Nada en ${CONFIG.radioKm} km ahora mismo.` +
+        (CONFIG.radioKm <= 50
+          ? `<br><br><span style="font-size:11px">Sin un receptor cerca, lo que ` +
+            `vuela bajo queda tapado por la curvatura de la Tierra. Prueba con ` +
+            `100 km: ahí sí aparece el tráfico en ruta.</span>` : "") + `</div>`
       : `<div class="vacio">Ninguna red ve nada por aquí.<br>` +
         `Probablemente no hay receptores cerca, no que el cielo esté vacío.` +
         `<br><br><span style="font-size:10px">${escapar(detalle)}</span></div>`;
