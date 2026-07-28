@@ -186,31 +186,42 @@ function desdeLocal() {
 // Todos los caminos acaban escribiendo algo en el marco, incluido el
 // de error: un hueco que dice "buscando…" eternamente es peor que
 // uno que dice "sin foto".
+// Se prueban varias URL en cadena. La primera busca por modelo, que
+// da mejor resultado con aviación general porque el ejemplar concreto
+// suele no estar fotografiado; si esa ruta no existe todavía en el
+// Worker desplegado, cae a la de siempre. Así una versión antigua
+// nunca deja la galería peor que antes.
 function cargarFoto(m) {
+  const candidatas = [];
+  if (modo === "servidor") candidatas.push(`${PROXY}/foto-tipo/${encodeURIComponent(m.tipo)}`);
+  if (m.ejemplar) candidatas.push(`${PROXY}/foto/${m.ejemplar}`);
+
   return new Promise(resolve => {
     const marco = document.getElementById("m-" + m.tipo);
-    if (!marco || !m.ejemplar) return resolve();
+    if (!marco || !candidatas.length) return resolve();
 
-    const img = new Image();
-    img.alt = m.tipo;
-    img.referrerPolicy = "no-referrer";
+    let i = 0;
+    const intentar = () => {
+      if (i >= candidatas.length) {
+        marco.innerHTML = "<span>sin foto</span>";
+        return resolve();
+      }
+      const url = candidatas[i++];
+      const img = new Image();
+      img.alt = m.tipo;
+      img.referrerPolicy = "no-referrer";
 
-    const fallo = motivo => { marco.innerHTML = `<span>${motivo}</span>`; resolve(); };
-    const corte = setTimeout(() => { img.src = ""; fallo("sin respuesta"); }, 12000);
-
-    img.onload = () => {
-      clearTimeout(corte);
-      marco.innerHTML = "";
-      marco.appendChild(img);
-      resolve();
+      const corte = setTimeout(() => { img.src = ""; intentar(); }, 12000);
+      img.onload = () => {
+        clearTimeout(corte);
+        marco.innerHTML = "";
+        marco.appendChild(img);
+        resolve();
+      };
+      img.onerror = () => { clearTimeout(corte); intentar(); };
+      img.src = url;
     };
-    img.onerror = () => { clearTimeout(corte); fallo("sin foto"); };
-
-    // Por tipo, no por ejemplar: si el avión concreto no está
-    // fotografiado, el Worker prueba con otros del mismo modelo.
-    img.src = modo === "servidor"
-      ? `${PROXY}/foto-tipo/${encodeURIComponent(m.tipo)}`
-      : `${PROXY}/foto/${m.ejemplar}`;
+    intentar();
   });
 }
 
