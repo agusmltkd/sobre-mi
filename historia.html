@@ -35,6 +35,13 @@ header a{font-size:10px;letter-spacing:.12em;text-transform:uppercase;
          color:var(--sello);text-decoration:none;
          border-bottom:1px solid var(--sello);padding-bottom:1px}
 
+.fuente{display:flex;gap:8px;margin-bottom:18px}
+.fuente button[aria-pressed="true"]{background:var(--tinta);color:var(--papel);
+                                    border-color:var(--tinta)}
+.evento{display:grid;grid-template-columns:52px 1fr auto;gap:9px;
+        font-size:11px;padding:6px 0;border-bottom:1px solid rgba(180,174,156,.45)}
+.evento .cl{font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;
+            color:var(--sello);padding-top:2px}
 section{margin-bottom:26px}
 h2{font-size:10px;letter-spacing:.18em;text-transform:uppercase;
    color:var(--tenue);margin-bottom:9px;padding-bottom:5px;
@@ -82,6 +89,11 @@ button.peligro:hover{border-color:var(--sello);color:var(--sello)}
     <a href="index.html">← En vivo</a>
   </header>
 
+  <div class="fuente">
+    <button id="bLocal" aria-pressed="true">Este navegador</button>
+    <button id="bServidor" aria-pressed="false">Servidor (24 h)</button>
+  </div>
+
   <div id="contenido"><div class="vacio">Leyendo el registro…</div></div>
 
 </div>
@@ -95,6 +107,8 @@ button.peligro:hover{border-color:var(--sello);color:var(--sello)}
 // ============================================================
 
 const BD_NOMBRE = "sobre-mi";
+const PROXY = "https://sobre-mi.mayoragustin01.workers.dev";
+let modo = "local";
 const RUMBOS = ["N","NNE","NE","ENE","E","ESE","SE","SSE",
                 "S","SSO","SO","OSO","O","ONO","NO","NNO"];
 
@@ -281,26 +295,58 @@ function marcador(k, v, u) {
          `<div class="v">${v}</div><div class="u">${u || ""}</div></div>`;
 }
 
+// El servidor devuelve las columnas en snake_case de SQL; aquí se
+// traducen a los mismos nombres que usa el registro local para que
+// todas las gráficas funcionen igual con las dos fuentes.
+function normalizarServidor(filas) {
+  return filas.map(r => ({
+    id: r.fecha + ":" + r.icao24, fecha: r.fecha, icao24: r.icao24,
+    callsign: r.callsign || "", tipo: r.tipo || "", modelo: r.modelo || "",
+    matricula: r.matricula || "", operador: r.operador || "",
+    origen: r.origen || "", destino: r.destino || "",
+    primera: r.primera, ultima: r.ultima,
+    minKm: r.min_km, acimut: r.acimut,
+    minPies: r.min_pies, maxPies: r.max_pies,
+    militar: r.militar, helicoptero: r.helicoptero, veces: r.veces
+  }));
+}
+
 async function pintar() {
   const cont = $("contenido");
-  let bd, registros, muestras;
+  cont.innerHTML = `<div class="vacio">Leyendo…</div>`;
+  let bd = null, registros, muestras, eventos = [];
 
   try {
-    bd = await abrirBD();
-    [registros, muestras] = await Promise.all([
-      leerTodo(bd, "avistamientos"), leerTodo(bd, "muestras")
-    ]);
+    if (modo === "servidor") {
+      const [a, m, e] = await Promise.all([
+        fetch(PROXY + "/registro/avistamientos?dias=365").then(r => r.json()),
+        fetch(PROXY + "/registro/muestras?horas=720").then(r => r.json()),
+        fetch(PROXY + "/registro/eventos").then(r => r.json())
+      ]);
+      if (a.error) throw new Error(a.error);
+      registros = normalizarServidor(a);
+      muestras = m.error ? [] : m;
+      eventos = e.error ? [] : e;
+    } else {
+      bd = await abrirBD();
+      [registros, muestras] = await Promise.all([
+        leerTodo(bd, "avistamientos"), leerTodo(bd, "muestras")
+      ]);
+    }
   } catch (e) {
-    cont.innerHTML = `<div class="vacio">No se ha podido abrir el registro.<br>` +
+    cont.innerHTML = `<div class="vacio">No se ha podido leer el registro.<br>` +
       `${escapar(e.message || e)}</div>`;
     return;
   }
 
   if (!registros.length) {
-    cont.innerHTML = `<div class="vacio">Todavía no hay nada registrado.<br><br>` +
-      `Deja la vista en vivo abierta un rato y vuelve.<br>` +
-      `El registro se guarda en este navegador, así que cada dispositivo ` +
-      `tiene el suyo.</div>`;
+    cont.innerHTML = modo === "servidor"
+      ? `<div class="vacio">El servidor todavía no ha registrado nada.<br><br>` +
+        `Comprueba que la base de datos D1 está enlazada y que el cron ` +
+        `está activo.</div>`
+      : `<div class="vacio">Todavía no hay nada registrado en este navegador.<br><br>` +
+        `Deja la vista en vivo abierta un rato, o mira el registro del ` +
+        `servidor, que graba las 24 horas.</div>`;
     return;
   }
 
@@ -319,8 +365,28 @@ async function pintar() {
     marcador("Paso más cercano", masCerca.minKm.toFixed(2), "km · " +
       escapar(masCerca.callsign || masCerca.icao24.toUpperCase())) +
     marcador("Más alto visto", "FL" + Math.round(masAlto.maxPies / 100),
-      escapar(masAlto.callsign || ""));
+      escapar(masAlto.callsign || "")) +
+    marcador("Militares", registros.filter(r => r.militar).length) +
+    marcador("Helicópteros", registros.filter(r => r.helicoptero).length);
   cont.appendChild(seccion("Resumen", resumen));
+
+  if (eventos.length) {
+    const cont2 = document.createElement("div");
+    cont2.innerHTML = eventos.slice(0, 25).map(e => `
+      <div class="evento">
+        <span class="cl">${escapar(e.clase || "")}</span>
+        <span>${escapar(e.callsign || e.icao24)} ·
+              ${escapar(e.detalle || "")}
+              <span style="color:var(--tenue)">
+                ${e.km != null ? e.km.toFixed(1) + " km" : ""}
+                ${e.pies != null ? "· " + Math.round(e.pies).toLocaleString("es-ES") + " ft" : ""}
+              </span></span>
+        <span style="color:var(--tenue);font-size:10px">
+          ${new Date(e.t).toLocaleString("es-ES", { day:"2-digit", month:"2-digit",
+            hour:"2-digit", minute:"2-digit" })}</span>
+      </div>`).join("");
+    cont.appendChild(seccion("Lo raro que ha pasado", cont2));
+  }
 
   cont.appendChild(seccion("Por dónde te entran", envolverLienzo(rosa(registros))));
 
@@ -359,14 +425,15 @@ async function pintar() {
   // Controles
   const ctr = document.createElement("div");
   ctr.className = "controles";
-  ctr.innerHTML = `<button id="csv">Exportar CSV</button>
-                   <button id="borrar" class="peligro">Borrar registro</button>`;
+  ctr.innerHTML = `<button id="csv">Exportar CSV</button>` +
+    (bd ? `<button id="borrar" class="peligro">Borrar registro local</button>` : "");
   cont.appendChild(ctr);
 
   const nota = document.createElement("div");
   nota.className = "nota";
   nota.textContent = `${registros.length} registros · ${muestras.length} muestras · ` +
-                     `guardado solo en este navegador`;
+    (modo === "servidor" ? "registrado por el Worker las 24 horas"
+                         : "guardado solo en este navegador");
   cont.appendChild(nota);
 
   $("csv").addEventListener("click", () => {
@@ -386,7 +453,7 @@ async function pintar() {
     URL.revokeObjectURL(a.href);
   });
 
-  $("borrar").addEventListener("click", () => {
+  if (bd) $("borrar").addEventListener("click", () => {
     if (!confirm("Esto borra todo el registro de este navegador. ¿Seguro?")) return;
     const t = bd.transaction(["avistamientos", "muestras"], "readwrite");
     t.objectStore("avistamientos").clear();
@@ -394,6 +461,15 @@ async function pintar() {
     t.oncomplete = () => location.reload();
   });
 }
+
+function cambiarModo(nuevo) {
+  modo = nuevo;
+  $("bLocal").setAttribute("aria-pressed", String(nuevo === "local"));
+  $("bServidor").setAttribute("aria-pressed", String(nuevo === "servidor"));
+  pintar();
+}
+$("bLocal").addEventListener("click", () => cambiarModo("local"));
+$("bServidor").addEventListener("click", () => cambiarModo("servidor"));
 
 pintar();
 </script>

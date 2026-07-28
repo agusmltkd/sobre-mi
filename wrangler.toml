@@ -1,0 +1,15 @@
+name = "sobre-mi"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# El registro automático: Cloudflare ejecuta el Worker cada minuto
+# por su cuenta, sin que haya que tener ninguna app abierta.
+[triggers]
+crons = ["* * * * *"]
+
+# Enlace a la base de datos D1. Si despliegas desde el panel en vez
+# de con wrangler, esto se configura en Settings > Bindings.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "sobre-mi"
+# database_id = "PON-AQUI-EL-ID"

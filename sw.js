@@ -8,7 +8,7 @@
 // el navegador sigue sirviendo la copia guardada. Un fallo de red es
 // molesto de vez en cuando; servir código viejo lo es siempre.
 
-const CACHE = "sobre-mi-v6";
+const CACHE = "sobre-mi-v7";
 
 const CARCASA = [
   "./",
