@@ -28,7 +28,7 @@ body{
 .envoltura{max-width:640px;margin:0 auto;padding:0 14px 48px}
 .pestanas{display:flex;border-bottom:1px solid var(--regla);
           position:sticky;top:0;z-index:11;background:var(--papel)}
-.pestanas a{flex:1;text-align:center;padding:12px 6px 10px;font-size:10px;
+.pestanas a{flex:1;text-align:center;padding:12px 4px 10px;font-size:9.5px;
             letter-spacing:.16em;text-transform:uppercase;color:var(--tenue);
             text-decoration:none;border-bottom:2px solid transparent}
 .pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
@@ -103,6 +103,7 @@ button.peligro:hover{border-color:var(--sello);color:var(--sello)}
     <a href="index.html">En vivo</a>
     <a href="historia.html" class="activa">Historia</a>
     <a href="modelos.html">Modelos</a>
+    <a href="comparar.html">Comparar</a>
   </nav>
 
   <header>
@@ -465,6 +466,28 @@ async function pintar() {
   if (muestras.length > 3) {
     cont.appendChild(seccion("Tráfico medio por hora del día",
                              envolverLienzo(porHora(muestras))));
+  }
+
+  // Vuelos habituales, solo desde el servidor: hacen falta varios
+  // días de registro continuo y el local rara vez los tiene.
+  if (modo === "servidor") {
+    try {
+      const hab = await fetch(PROXY + "/registro/habituales?dias=3").then(r => r.json());
+      if (Array.isArray(hab) && hab.length) {
+        const t = document.createElement("table");
+        t.innerHTML =
+          `<thead><tr><th>Vuelo</th><th>Ruta</th><th>Modelo</th>
+           <th class="num">Días</th><th>Hora</th><th class="num">km</th></tr></thead>
+           <tbody>${hab.slice(0, 20).map(r => `<tr>
+             <td>${escapar(r.callsign)}</td>
+             <td>${escapar(r.origen && r.destino ? r.origen + "→" + r.destino : "—")}</td>
+             <td>${escapar(r.tipo || "—")}</td>
+             <td class="num">${r.dias}</td>
+             <td>${escapar(r.hora_tipica || "—")}</td>
+             <td class="num">${Number(r.media_km).toFixed(1)}</td></tr>`).join("")}</tbody>`;
+        cont.appendChild(seccion("Vuelos habituales", t));
+      }
+    } catch (e) { /* si no hay, no pasa nada */ }
   }
 
   const dia = porDia(registros);

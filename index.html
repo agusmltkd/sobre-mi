@@ -247,6 +247,47 @@ h1{
   outline:2px solid var(--sello);outline-offset:2px}
 .vacio{padding:26px 0;text-align:center;color:var(--tenue);font-size:12px}
 
+/* ---------- Modo quiosco ----------
+   Todo fuera menos el radar. Pensado para un iPad viejo en una
+   estantería: se mira de lejos, así que el dibujo manda y el texto
+   se reduce a lo imprescindible. */
+html[data-quiosco] body{overflow:hidden}
+html[data-quiosco] .pestanas,
+html[data-quiosco] header,
+html[data-quiosco] .tiras,
+html[data-quiosco] .chispa,
+html[data-quiosco] .pie,
+html[data-quiosco] #detalle,
+html[data-quiosco] #aviso{display:none}
+html[data-quiosco] .envoltura{
+  max-width:none;padding:0;height:100vh;height:100dvh;
+  display:flex;flex-direction:column;justify-content:center;
+}
+html[data-quiosco] .cuadro{
+  border:none;background:transparent;margin:0;padding:0;
+  display:flex;align-items:center;justify-content:center;
+}
+html[data-quiosco] .cuadro svg{
+  width:min(96vw,96vh);height:auto;
+}
+html[data-quiosco] .etiqueta-cuadro,
+html[data-quiosco] .cuenta-cuadro{font-size:12px;top:14px}
+html[data-quiosco] .etiqueta-cuadro{left:18px}
+html[data-quiosco] .cuenta-cuadro{right:18px}
+html[data-quiosco] #alerta{
+  position:fixed;left:0;right:0;bottom:0;margin:0;z-index:20;
+}
+html[data-quiosco] .alerta{padding:16px 20px}
+html[data-quiosco] .alerta .grande{font-size:26px}
+html[data-quiosco] .alerta .chico{font-size:12px}
+#salirQuiosco{
+  display:none;position:fixed;top:14px;right:14px;z-index:30;
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;background:var(--papel-hondo);color:var(--tenue);
+  border:1px solid var(--regla);padding:9px 12px;cursor:pointer;
+}
+html[data-quiosco] #salirQuiosco{display:block}
+
 /* ---------- Modo noche ----------
    No es el papel invertido: es una carta náutica nocturna. La tinta
    se vuelve luz y el papel, la oscuridad de la mesilla. */
@@ -275,6 +316,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
     <a href="index.html" class="activa">En vivo</a>
     <a href="historia.html">Historia</a>
     <a href="modelos.html">Modelos</a>
+    <a href="comparar.html">Comparar</a>
   </nav>
 
   <header>
@@ -294,6 +336,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
     </div>
   </header>
 
+  <button id="salirQuiosco">Salir</button>
   <div id="alerta"></div>
   <div id="aviso"></div>
 
@@ -341,6 +384,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
     <button id="btnImagen">Guardar imagen</button>
     <button id="btnEstelas" aria-pressed="true">Estelas</button>
     <button id="btnSonido" aria-pressed="false">Aviso sonoro</button>
+    <button id="btnQuiosco">Quiosco</button>
     <button id="btnLuz" aria-pressed="false">Pantalla encendida</button>
   </div>
 
@@ -354,7 +398,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "13";
+const VERSION = "15";
 
 const CONFIG = {
   lat: 37.402935,
@@ -406,7 +450,40 @@ const CONFIG = {
     ]
   },
 
-  // Aeropuertos que se dibujan en el radar. El rumbo es verdadero,
+  // Aeropuertos de la península y alrededores. Coordenadas
+  // aproximadas al centro de campo: sirven para situarse, no para
+  // navegar. Se dibujan estés donde estés.
+  aeropuertosMapa: [
+    ["SVQ",37.4181,-5.8931], ["MAD",40.4936,-3.5668], ["BCN",41.2971,2.0785],
+    ["AGP",36.6749,-4.4991], ["XRY",36.7446,-6.0601], ["ZAZ",41.6662,-1.0416],
+    ["VLC",39.4893,-0.4816], ["ALC",38.2822,-0.5582], ["BIO",43.3011,-2.9106],
+    ["SCQ",42.8963,-8.4151], ["GRX",37.1887,-3.7774], ["LEI",36.8439,-2.3701],
+    ["BJZ",38.8913,-6.8213], ["ODB",37.8420,-4.8489], ["PMI",39.5517,2.7388],
+    ["IBZ",38.8729,1.3731], ["MAH",39.8626,4.2186], ["MJV",37.8030,-1.1250],
+    ["GRO",41.9010,2.7605], ["REU",41.1474,1.1672], ["EAS",43.3565,-1.7906],
+    ["VIT",42.8828,-2.7245], ["PNA",42.7700,-1.6461], ["VLL",41.7061,-4.8519],
+    ["SDR",43.4271,-3.8200], ["OVD",43.5636,-6.0346], ["LCG",43.3021,-8.3773],
+    ["VGO",42.2318,-8.6273], ["ABC",38.9485,-1.8635], ["LEN",42.5890,-5.6556],
+    ["LIS",38.7742,-9.1342], ["FAO",37.0144,-7.9659], ["OPO",41.2481,-8.6814],
+    ["TNG",35.7269,-5.9169], ["CMN",33.3675,-7.5899],
+    ["Morón",37.1749,-5.6159], ["Rota",36.6452,-6.3495]
+  ],
+
+  // Ciudades grandes, para orientarse cuando no hay aeropuerto cerca.
+  ciudades: [
+    ["Sevilla",37.3886,-5.9823], ["Madrid",40.4168,-3.7038],
+    ["Barcelona",41.3874,2.1686], ["Valencia",39.4699,-0.3763],
+    ["Zaragoza",41.6488,-0.8891], ["Málaga",36.7213,-4.4214],
+    ["Murcia",37.9922,-1.1307], ["Bilbao",43.2630,-2.9350],
+    ["Granada",37.1773,-3.5986], ["Córdoba",37.8882,-4.7794],
+    ["Cádiz",36.5271,-6.2886], ["Huelva",37.2614,-6.9447],
+    ["Jaén",37.7796,-3.7849], ["Almería",36.8340,-2.4637],
+    ["Badajoz",38.8794,-6.9707], ["Mérida",38.9165,-6.3436],
+    ["Faro",37.0194,-7.9304], ["Lisboa",38.7223,-9.1393],
+    ["Tánger",35.7595,-5.8340], ["Ceuta",35.8894,-5.3213]
+  ],
+
+  // Aeropuertos con pista dibujada a escala. Solo los de casa. El rumbo es verdadero,
   // no magnético: la 09/27 de San Pablo cae en unos 088°.
   aeropuertos: [
     {
@@ -929,6 +1006,38 @@ function dibujarFondo() {
   });
 
   // Referencias en tierra: sin ellas el radar es un círculo abstracto.
+  if (mostrarGeo) {
+    // Aeropuertos y ciudades se dibujan estés donde estés: son la
+    // única referencia cuando el radar no está sobre tu casa.
+    for (const [nom, la, lo] of CONFIG.aeropuertosMapa) {
+      const q = proyectar(la, lo);
+      if (Math.hypot(q.x, q.y) > CONFIG.radioKm) continue;
+      const p = aPantalla(q.x, q.y);
+      // Marca de aeropuerto: un aspa, distinta del punto de ciudad.
+      g.appendChild(crear("path", {
+        d: `M${p.x - 3} ${p.y - 3}L${p.x + 3} ${p.y + 3}M${p.x - 3} ${p.y + 3}L${p.x + 3} ${p.y - 3}`,
+        stroke: C.sello, "stroke-width": 1, "stroke-opacity": .7 }));
+      const t = crear("text", { x: p.x + 5, y: p.y - 4, fill: C.sello,
+        "font-size": 7.5, "font-family": "monospace", "font-weight": "700",
+        "fill-opacity": .85 });
+      t.textContent = nom;
+      g.appendChild(t);
+    }
+
+    for (const [nom, la, lo] of CONFIG.ciudades) {
+      const q = proyectar(la, lo);
+      if (Math.hypot(q.x, q.y) > CONFIG.radioKm) continue;
+      const p = aPantalla(q.x, q.y);
+      g.appendChild(crear("circle", { cx: p.x, cy: p.y, r: 1.8,
+        fill: C.tenue, "fill-opacity": .6 }));
+      const t = crear("text", { x: p.x + 4, y: p.y + 3.5, fill: C.tenue,
+        "font-size": 7, "font-family": "monospace", "fill-opacity": .8 });
+      t.textContent = nom;
+      g.appendChild(t);
+    }
+  }
+
+  // El detalle fino —río y pueblos del área— solo tiene sentido en casa.
   if (mostrarGeo && sitio === "casa") {
     g.appendChild(crear("path", {
       d: trazo(CONFIG.geografia.rio.map(([la, lo]) => proyectar(la, lo)), 4),
@@ -1049,7 +1158,8 @@ function dibujarTrafico() {
         stroke: color, "stroke-width": .7, "stroke-opacity": .55 }));
     }
 
-    if (i < 3 || esMarcado) {
+    const limite = document.documentElement.hasAttribute("data-quiosco") ? 8 : 3;
+    if (i < limite || esMarcado) {
       const et = crear("text", { x: px + 8, y: py + 3, fill: color,
         "font-size": 8.5, "font-family": "monospace",
         "font-weight": esMarcado ? "700" : "400" });
@@ -1464,6 +1574,40 @@ $("bAqui").addEventListener("click", () => {
     },
     { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
 });
+
+// El quiosco intenta pantalla completa y mantener el retroiluminado.
+// Si el navegador no deja, se queda en la vista limpia igualmente.
+async function quiosco(activo) {
+  document.documentElement.toggleAttribute("data-quiosco", activo);
+  try {
+    if (activo && document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    } else if (!activo && document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (e) { /* iOS no siempre lo permite */ }
+
+  if (activo && !wakeLock && navigator.wakeLock) {
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+      $("btnLuz").setAttribute("aria-pressed", "true");
+    } catch (e) { /* da igual */ }
+  }
+  refrescarVista();
+}
+
+$("btnQuiosco").addEventListener("click", () => quiosco(true));
+$("salirQuiosco").addEventListener("click", () => quiosco(false));
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.documentElement.hasAttribute("data-quiosco")) {
+    quiosco(false);
+  }
+});
+
+// Se puede entrar directamente con ?quiosco al final de la URL, que
+// es lo cómodo para dejarlo fijo en un dispositivo de sobremesa.
+if (new URLSearchParams(location.search).has("quiosco")) quiosco(true);
 
 $("btnEscala").addEventListener("click", e => {
   escalaRaiz = !escalaRaiz;

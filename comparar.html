@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sobre mí · comparar</title>
+<meta name="theme-color" content="#E8E2D2">
+<link rel="apple-touch-icon" href="icono.png">
+<style>
+:root{
+  --papel:#E8E2D2; --papel-hondo:#DED6C3; --papel-marcado:#D4CBB5;
+  --tinta:#1C1B18; --tinta-media:#4A4741; --tinta-alta:#857F72;
+  --tenue:#6B675C; --regla:#B4AE9C; --sello:#8C3A1E;
+  --mono: ui-monospace,"SF Mono",SFMono-Regular,Menlo,monospace;
+  --display:"Avenir Next Condensed","Helvetica Neue Condensed","Arial Narrow",var(--mono);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--papel);color:var(--tinta);font-family:var(--mono);font-size:14px;
+     line-height:1.35;padding:env(safe-area-inset-top) env(safe-area-inset-right)
+     env(safe-area-inset-bottom) env(safe-area-inset-left);
+     background-image:radial-gradient(circle at 20% 15%,rgba(0,0,0,.025) 0 30%,transparent 60%),
+     radial-gradient(circle at 85% 80%,rgba(0,0,0,.02) 0 25%,transparent 55%);
+     background-attachment:fixed}
+.envoltura{max-width:760px;margin:0 auto;padding:0 14px 44px}
+.pestanas{display:flex;border-bottom:1px solid var(--regla);position:sticky;top:0;
+          z-index:11;background:var(--papel)}
+.pestanas a{flex:1;text-align:center;padding:12px 4px 10px;font-size:9.5px;
+            letter-spacing:.14em;text-transform:uppercase;color:var(--tenue);
+            text-decoration:none;border-bottom:2px solid transparent}
+.pestanas a.activa{color:var(--tinta);border-bottom-color:var(--sello)}
+header{padding:14px 0 10px;border-bottom:1px solid var(--regla);margin-bottom:14px}
+h1{font-family:var(--display);font-size:26px;font-weight:600;letter-spacing:.06em;
+   text-transform:uppercase;line-height:1}
+.sub{font-size:10px;color:var(--tenue);letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+
+.par{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{background:var(--papel-hondo);border:1px solid var(--regla);padding:10px}
+.panel h2{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:.04em;
+          text-transform:uppercase;color:var(--sello);line-height:1}
+.panel select{width:100%;margin-top:7px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.08em;background:transparent;color:var(--tinta);
+  border:1px solid var(--regla);padding:6px}
+.panel svg{display:block;width:100%;height:auto;margin-top:9px}
+.cifras{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin-top:9px;
+        padding-top:9px;border-top:1px solid var(--regla)}
+.cifra .k{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--tenue)}
+.cifra .v{font-size:17px;font-weight:600;line-height:1.1}
+
+.veredicto{margin-top:18px;padding:13px 15px;background:var(--papel-hondo);
+           border-left:3px solid var(--sello);font-size:12px;line-height:1.5}
+.veredicto b{color:var(--sello)}
+.pie{margin-top:18px;padding-top:12px;border-top:1px solid var(--regla);
+     font-size:10px;color:var(--tenue);letter-spacing:.08em;text-transform:uppercase;
+     display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.pie button{font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;background:transparent;color:var(--tenue);
+  border:1px solid var(--regla);padding:7px 11px;cursor:pointer}
+@media (max-width:560px){
+  .par{grid-template-columns:1fr}
+  h1{font-size:22px}
+  .envoltura{padding:0 11px 44px}
+}
+</style>
+</head>
+<body>
+<div class="envoltura">
+
+  <nav class="pestanas">
+    <a href="index.html">En vivo</a>
+    <a href="historia.html">Historia</a>
+    <a href="modelos.html">Modelos</a>
+    <a href="comparar.html" class="activa">Comparar</a>
+  </nav>
+
+  <header>
+    <h1>Comparar</h1>
+    <div class="sub" id="sub">dos cielos a la misma hora</div>
+  </header>
+
+  <div class="par">
+    <div class="panel" id="pA"></div>
+    <div class="panel" id="pB"></div>
+  </div>
+
+  <div id="veredicto"></div>
+
+  <div class="pie">
+    <span id="marca">—</span>
+    <button id="refrescar">Actualizar</button>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+//  SOBRE MÍ · comparar
+//
+//  Dos radares del mismo tamaño y a la misma hora. No hay mejor
+//  forma de enseñar qué significa "no tener cobertura" que poner
+//  tu cielo al lado de uno que sí la tiene.
+// ============================================================
+
+const PROXY = "https://sobre-mi.mayoragustin01.workers.dev";
+const RADIO = 50;
+
+const SITIOS = [
+  ["Casa · Sevilla",   37.402935, -5.957803],
+  ["Barajas · Madrid", 40.4936,  -3.5668],
+  ["Málaga",           36.6749,  -4.4991],
+  ["Barcelona",        41.2971,   2.0785],
+  ["Lisboa",           38.7742,  -9.1342],
+  ["Heathrow",         51.4700,  -0.4543],
+  ["Ámsterdam",        52.3105,   4.7683],
+  ["Fráncfort",        50.0379,   8.5622],
+  ["París CDG",        49.0097,   2.5479]
+];
+
+const $ = id => document.getElementById(id);
+const NS = "http://www.w3.org/2000/svg";
+const crear = (t, a) => {
+  const e = document.createElementNS(NS, t);
+  for (const k in a) e.setAttribute(k, a[k]);
+  return e;
+};
+const escapar = s => String(s == null ? "" : s)
+  .replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+let sel = { A: 0, B: 1 };
+let datos = { A: null, B: null };
+
+function proyectar(lat, lon, cen) {
+  return {
+    x: (lon - cen.lon) * 111.32 * Math.cos(cen.lat * Math.PI / 180),
+    y: (lat - cen.lat) * 111.32
+  };
+}
+
+const tinta = pies => pies < 5000 ? "#1C1B18" : pies < 20000 ? "#4A4741" : "#857F72";
+
+function radar(aviones, cen) {
+  const svg = crear("svg", { viewBox: "0 0 300 300" });
+  const cx = 150, cy = 150, R = 128;
+  // Misma escala de raíz que la vista en vivo, para que los dos
+  // paneles sean directamente comparables.
+  const rp = km => Math.sqrt(Math.min(1, km / RADIO)) * R;
+
+  for (const km of [10, 25, 50]) {
+    svg.appendChild(crear("circle", { cx, cy, r: rp(km), fill: "none",
+      stroke: "#B4AE9C", "stroke-width": km === 50 ? 1 : .5,
+      "stroke-dasharray": km === 50 ? "none" : "2 3" }));
+    const t = crear("text", { x: cx + 3, y: cy - rp(km) - 3, fill: "#8A8579",
+      "font-size": 7, "font-family": "monospace" });
+    t.textContent = km + " km";
+    svg.appendChild(t);
+  }
+  ["N","E","S","O"].forEach((r, i) => {
+    const a = i * 90 * Math.PI / 180;
+    const t = crear("text", { x: cx + Math.sin(a) * (R + 11),
+      y: cy - Math.cos(a) * (R + 11) + 3, fill: "#6B675C", "font-size": 9,
+      "font-family": "monospace", "text-anchor": "middle" });
+    t.textContent = r;
+    svg.appendChild(t);
+  });
+
+  svg.appendChild(crear("circle", { cx, cy, r: 3, fill: "none",
+    stroke: "#8C3A1E", "stroke-width": 1.2 }));
+
+  for (const a of aviones) {
+    const p = proyectar(a.lat, a.lon, cen);
+    const d = Math.hypot(p.x, p.y);
+    if (d > RADIO || d < 1e-6) continue;
+    const r = rp(d);
+    const px = cx + (p.x / d) * r, py = cy - (p.y / d) * r;
+    const g = crear("g", {
+      transform: `translate(${px.toFixed(1)} ${py.toFixed(1)}) rotate(${a.rumbo || 0})` });
+    g.appendChild(crear("path", { d: "M0 -5 L3.4 4.2 L0 2 L-3.4 4.2 Z",
+      fill: tinta(a.altPies || 0) }));
+    svg.appendChild(g);
+  }
+  return svg;
+}
+
+function cifras(aviones) {
+  const v = aviones.filter(a => !a.enSuelo);
+  const pies = v.map(a => a.altPies || 0).sort((x, y) => x - y);
+  return {
+    total: v.length,
+    bajos: pies.filter(p => p < 10000).length,
+    mediana: pies.length ? Math.round(pies[Math.floor(pies.length / 2)]) : 0,
+    conTipo: v.filter(a => a.tipo).length
+  };
+}
+
+async function cargar(lado) {
+  const [nom, lat, lon] = SITIOS[sel[lado]];
+  const panel = $("p" + lado);
+  panel.innerHTML = `<h2>${escapar(nom)}</h2>
+    <select id="s${lado}">${SITIOS.map((s, i) =>
+      `<option value="${i}"${i === sel[lado] ? " selected" : ""}>${escapar(s[0])}</option>`
+    ).join("")}</select>
+    <div style="padding:40px 0;text-align:center;color:var(--tenue);font-size:11px">Cargando…</div>`;
+
+  $("s" + lado).addEventListener("change", ev => {
+    sel[lado] = Number(ev.target.value);
+    cargar(lado);
+  });
+
+  let j;
+  try {
+    const r = await fetch(`${PROXY}/aviones?lat=${lat}&lon=${lon}&km=${RADIO}`);
+    j = await r.json();
+    if (j.error) throw new Error(j.error);
+  } catch (e) {
+    panel.querySelector("div:last-child").textContent = "Sin datos: " + e.message;
+    return;
+  }
+
+  const vuelo = (j.aviones || []).filter(a => !a.enSuelo);
+  datos[lado] = { nom, c: cifras(j.aviones || []) };
+
+  const c = datos[lado].c;
+  panel.querySelector("div:last-child").remove();
+  panel.appendChild(radar(vuelo, { lat, lon }));
+
+  const rej = document.createElement("div");
+  rej.className = "cifras";
+  rej.innerHTML =
+    `<div class="cifra"><div class="k">En el aire</div><div class="v">${c.total}</div></div>
+     <div class="cifra"><div class="k">Bajo FL100</div><div class="v">${c.bajos}</div></div>
+     <div class="cifra"><div class="k">Altitud mediana</div>
+       <div class="v">${c.mediana ? Math.round(c.mediana / 100) * 100 : "—"}<span
+       style="font-size:10px;color:var(--tenue)"> ft</span></div></div>
+     <div class="cifra"><div class="k">Identificados</div><div class="v">${c.conTipo}</div></div>`;
+  panel.appendChild(rej);
+
+  veredicto();
+}
+
+function veredicto() {
+  if (!datos.A || !datos.B) return;
+  const a = datos.A, b = datos.B;
+  const veces = a.c.total && b.c.total
+    ? (Math.max(a.c.total, b.c.total) / Math.max(1, Math.min(a.c.total, b.c.total)))
+    : null;
+  const rico = a.c.total >= b.c.total ? a : b;
+  const pobre = a.c.total >= b.c.total ? b : a;
+
+  let t = `<b>${escapar(rico.nom)}</b> tiene ${rico.c.total} aviones frente a los ` +
+          `${pobre.c.total} de <b>${escapar(pobre.nom)}</b>`;
+  if (veces && veces > 1.5) t += `, unas ${veces.toFixed(1)} veces más`;
+  t += ". ";
+
+  if (pobre.c.bajos === 0 && rico.c.bajos > 0) {
+    t += `Y la diferencia que de verdad importa: ${rico.c.bajos} de ellos vuelan por ` +
+         `debajo de FL100, mientras que en ${escapar(pobre.nom)} no se ve <b>ni uno</b>. ` +
+         `Eso no es que no haya tráfico bajo: es que no hay ningún receptor cerca ` +
+         `capaz de oírlo.`;
+  } else if (pobre.c.bajos < rico.c.bajos) {
+    t += `Por debajo de FL100 la distancia se agranda: ${rico.c.bajos} contra ` +
+         `${pobre.c.bajos}. Esa franja solo la captan antenas cercanas.`;
+  }
+
+  $("veredicto").innerHTML = `<div class="veredicto">${t}</div>`;
+}
+
+async function todo() {
+  await Promise.all([cargar("A"), cargar("B")]);
+  $("marca").textContent = "Actualizado a las " +
+    new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+}
+
+$("refrescar").addEventListener("click", todo);
+todo();
+setInterval(todo, 30000);
+</script>
+</body>
+</html>
