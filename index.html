@@ -136,6 +136,15 @@ h1{
   position:absolute;top:8px;font-size:9px;letter-spacing:.16em;
   color:var(--tenue);text-transform:uppercase;
 }
+.vistas{position:absolute;top:7px;left:8px;z-index:5;display:flex;gap:4px}
+.vistas button{
+  font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  background:transparent;color:var(--tenue);border:1px solid var(--regla);
+  padding:4px 8px;cursor:pointer;
+}
+.vistas button[aria-pressed="true"]{background:var(--tinta);color:var(--papel);
+                                    border-color:var(--tinta)}
+html[data-quiosco] .vistas{top:14px;left:18px}
 .etiqueta-cuadro{left:12px}
 .cuenta-cuadro{right:12px}
 /* Atajo al quiosco donde se busca: sobre el propio radar, no
@@ -426,7 +435,10 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
   <div id="aviso"></div>
 
   <div class="cuadro">
-    <span class="etiqueta-cuadro">Vertical</span>
+    <span class="vistas">
+      <button id="vPolar" aria-pressed="true">Polar</button>
+      <button id="vPerfil" aria-pressed="false">Perfil</button>
+    </span>
     <span class="cuenta-cuadro" id="cuenta">—</span>
     <button class="expandir" id="btnQuiosco2" title="Modo quiosco">⤢</button>
     <svg id="scope" viewBox="0 0 400 400" role="img"
@@ -487,7 +499,7 @@ html[data-tema="noche"] .detalle .foto{opacity:.9}
 
 // Se muestra en el pie: sirve para saber de un vistazo si lo que
 // corre en el navegador es lo último que publicaste.
-const VERSION = "20";
+const VERSION = "21";
 
 const CONFIG = {
   lat: 37.402935,
@@ -612,7 +624,9 @@ let mostrarGeo = true;
 let animando = false;
 let ultimoCuadro = 0;
 let sitio = "casa";
-let mostrarFotos = false;
+let mostrarFotos = true;
+let vista = "polar";
+let refPerfil = "casa";
 let record = null;           // paso más cercano de la sesión
 
 // --- Utilidades ---------------------------------------------
@@ -1057,7 +1071,163 @@ function anillos() {
   return [25, 50, 100, 200];
 }
 
+// ---------- Perfil vertical ----------
+//
+// Distancia en horizontal, altitud en vertical. Es la vista que el
+// polar no puede dar, porque allí la altura se pierde: aquí se ve de
+// un vistazo quién viene a aterrizar y quién solo está de paso.
+
+const PX0 = 36, PX1 = 392, PY0 = 16, PY1 = 372;
+const TECHO = 45000;
+
+// Escala de altitud partida: los primeros 10.000 pies ocupan más de
+// la mitad del alto. Dentro de esa banda sigue siendo lineal, así que
+// la senda de planeo se dibuja recta, que es lo que importa.
+function aY(pies) {
+  const p = Math.max(0, Math.min(TECHO, pies));
+  const corte = 10000, reparto = 0.58;
+  const f = p <= corte
+    ? (p / corte) * reparto
+    : reparto + ((p - corte) / (TECHO - corte)) * (1 - reparto);
+  return PY1 - f * (PY1 - PY0);
+}
+
+const aX = km => PX0 + (Math.min(km, CONFIG.radioKm) / CONFIG.radioKm) * (PX1 - PX0);
+
+// Referencia del eje horizontal: tu casa, o el aeropuerto. Medido
+// desde el aeropuerto, las aproximaciones caen clavadas sobre la
+// senda de 3°, que es la comprobación de que todo cuadra.
+function distanciaRef(a) {
+  if (refPerfil === "casa" || sitio !== "casa") return a.distanciaKm;
+  const ae = CONFIG.aeropuertos[0];
+  const pa = proyectar(ae.lat, ae.lon);
+  return Math.hypot(a.x - pa.x, a.y - pa.y);
+}
+
+function fondoPerfil() {
+  const C = colores();
+  const g = capa("fondo");
+
+  const niveles = [0, 2000, 5000, 10000, 20000, 30000, 40000];
+  for (const n of niveles) {
+    const y = aY(n);
+    g.appendChild(crear("line", { x1: PX0, y1: y, x2: PX1, y2: y,
+      stroke: C.regla, "stroke-width": n === 0 ? 1 : .5,
+      "stroke-dasharray": n === 0 ? "none" : "2 3" }));
+    const t = crear("text", { x: PX0 - 4, y: y + 3, fill: C.tenue,
+      "font-size": 7.5, "font-family": "monospace", "text-anchor": "end" });
+    t.textContent = n >= 10000 ? "FL" + n / 100 : (n / 1000) + "k";
+    g.appendChild(t);
+  }
+
+  const paso = CONFIG.radioKm <= 30 ? 5 : CONFIG.radioKm <= 60 ? 10 : 25;
+  for (let k = 0; k <= CONFIG.radioKm; k += paso) {
+    const x = aX(k);
+    g.appendChild(crear("line", { x1: x, y1: PY0, x2: x, y2: PY1,
+      stroke: C.regla, "stroke-width": .4, "stroke-dasharray": "2 4" }));
+    const t = crear("text", { x, y: PY1 + 12, fill: C.tenue, "font-size": 7.5,
+      "font-family": "monospace", "text-anchor": "middle" });
+    t.textContent = k;
+    g.appendChild(t);
+  }
+  const et = crear("text", { x: PX1, y: PY1 + 23, fill: C.tenue, "font-size": 7.5,
+    "font-family": "monospace", "text-anchor": "end" });
+  et.textContent = "km desde " + (refPerfil === "casa" || sitio !== "casa"
+    ? "aquí" : CONFIG.aeropuertos[0].codigo);
+  g.appendChild(et);
+
+  // Senda de planeo de 3°: 318 pies por milla náutica, o unos 172
+  // pies por kilómetro. Es la pendiente a la que desciende cualquier
+  // avión en aproximación final.
+  const piesPorKm = Math.tan(3 * Math.PI / 180) * 3280.84;
+  const pts = [];
+  for (let k = 0; k <= CONFIG.radioKm; k += CONFIG.radioKm / 60) {
+    const p = k * piesPorKm;
+    if (p > TECHO) break;
+    pts.push(`${aX(k).toFixed(1)} ${aY(p).toFixed(1)}`);
+  }
+  if (pts.length > 1) {
+    g.appendChild(crear("path", { d: "M" + pts.join(" L"), fill: "none",
+      stroke: C.sello, "stroke-width": .8, "stroke-opacity": .45,
+      "stroke-dasharray": "5 4" }));
+    const t = crear("text", { x: aX(CONFIG.radioKm * 0.42) + 4,
+      y: aY(CONFIG.radioKm * 0.42 * piesPorKm) - 4, fill: C.sello,
+      "font-size": 7, "font-family": "monospace", "fill-opacity": .8 });
+    t.textContent = "senda 3°";
+    g.appendChild(t);
+  }
+
+  // Banda de aproximación: por debajo de 6.000 pies casi todo lo que
+  // hay o está aterrizando o acaba de despegar.
+  g.appendChild(crear("rect", { x: PX0, y: aY(6000), width: PX1 - PX0,
+    height: PY1 - aY(6000), fill: C.tinta, "fill-opacity": .04 }));
+
+  g.appendChild(crear("line", { x1: PX0, y1: PY0, x2: PX0, y2: PY1,
+    stroke: C.regla, "stroke-width": 1 }));
+}
+
+function estelasPerfil(aviones) {
+  const g = capa("estelas");
+  if (!mostrarEstelas) return;
+  const C = colores();
+  const activos = new Set(aviones.map(a => a.icao24));
+  const ae = CONFIG.aeropuertos[0];
+  const pa = proyectar(ae.lat, ae.lon);
+  const desdeAe = !(refPerfil === "casa" || sitio !== "casa");
+
+  for (const [icao, pts] of estelas) {
+    if (pts.length < 2) continue;
+    const d = pts.map(p => {
+      const km = desdeAe ? Math.hypot(p.x - pa.x, p.y - pa.y) : Math.hypot(p.x, p.y);
+      return `${aX(km).toFixed(1)} ${aY(p.pies || 0).toFixed(1)}`;
+    });
+    g.appendChild(crear("path", { d: "M" + d.join(" L"), fill: "none",
+      stroke: C.tinta, "stroke-width": activos.has(icao) ? .8 : .5,
+      "stroke-opacity": activos.has(icao) ? .3 : .12,
+      "stroke-linecap": "round", "stroke-linejoin": "round" }));
+  }
+}
+
+function traficoPerfil() {
+  const g = capa("trafico");
+  const C = colores();
+
+  ultimos.forEach((a, i) => {
+    const km = distanciaRef(a);
+    if (km > CONFIG.radioKm) return;
+    const x = aX(km), y = aY(a.pies);
+    const esMarcado = a.icao24 === marcado;
+    const color = esMarcado ? C.sello : a.emergencia ? C.sello : tintaPorAltitud(a.pies, C);
+
+    // El símbolo dice qué está haciendo: subiendo, bajando o nivelado.
+    const forma = a.subiendo ? "M0 -5 L4 3 L-4 3 Z"
+                : a.bajando  ? "M0 5 L4 -3 L-4 -3 Z"
+                             : "M-4 0 L4 0 M0 -1.5 L0 1.5";
+    const nodo = crear("g", { transform: `translate(${x.toFixed(1)} ${y.toFixed(1)})` });
+    if (a.subiendo || a.bajando) {
+      nodo.appendChild(crear("path", { d: forma, fill: color }));
+    } else {
+      nodo.appendChild(crear("path", { d: forma, stroke: color, "stroke-width": 2.2 }));
+    }
+    g.appendChild(nodo);
+
+    if (a.militar || a.helicoptero || a.emergencia) {
+      g.appendChild(crear("circle", { cx: x, cy: y, r: 8, fill: "none",
+        stroke: color, "stroke-width": .7, "stroke-opacity": .55 }));
+    }
+
+    const limite = document.documentElement.hasAttribute("data-quiosco") ? 8 : 4;
+    if (i < limite || esMarcado) {
+      const t = crear("text", { x: x + 7, y: y + 3, fill: color, "font-size": 8,
+        "font-family": "monospace", "font-weight": esMarcado ? "700" : "400" });
+      t.textContent = a.callsign || a.icao24.toUpperCase();
+      g.appendChild(t);
+    }
+  });
+}
+
 function dibujarFondo() {
+  if (vista === "perfil") return fondoPerfil();
   const C = colores();
   const g = capa("fondo");
 
@@ -1186,6 +1356,7 @@ function dibujarFondo() {
 }
 
 function dibujarEstelas(aviones) {
+  if (vista === "perfil") return estelasPerfil(aviones);
   const g = capa("estelas");
   if (!mostrarEstelas) return;
   const C = colores();
@@ -1215,6 +1386,7 @@ function posicionAhora(a) {
 }
 
 function dibujarTrafico() {
+  if (vista === "perfil") return traficoPerfil();
   const g = capa("trafico");
   const C = colores();
   let fuera = 0;
@@ -1900,7 +2072,28 @@ $("btnFotos").addEventListener("click", e => {
   refrescarVista();
 });
 
+function cambiarVista(v) {
+  vista = v;
+  $("vPolar").setAttribute("aria-pressed", String(v === "polar"));
+  $("vPerfil").setAttribute("aria-pressed", String(v === "perfil"));
+  // En perfil, el botón de zoom central pasa a alternar la referencia
+  // del eje: tu casa o el aeropuerto.
+  $("btnEscala").textContent = v === "perfil" ? "Medir desde SVQ" : "Zoom central";
+  $("btnEscala").setAttribute("aria-pressed",
+    v === "perfil" ? String(refPerfil === "SVQ") : String(escalaRaiz));
+  refrescarVista();
+}
+
+$("vPolar").addEventListener("click", () => cambiarVista("polar"));
+$("vPerfil").addEventListener("click", () => cambiarVista("perfil"));
+
 $("btnEscala").addEventListener("click", e => {
+  if (vista === "perfil") {
+    refPerfil = refPerfil === "casa" ? "SVQ" : "casa";
+    e.target.setAttribute("aria-pressed", String(refPerfil === "SVQ"));
+    refrescarVista();
+    return;
+  }
   escalaRaiz = !escalaRaiz;
   e.target.setAttribute("aria-pressed", String(escalaRaiz));
   refrescarVista();
